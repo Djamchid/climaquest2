@@ -1,6 +1,7 @@
-import {state, actions, applyAction, nextTurn} from './engine.js';
+import {state, actions, applyAction, nextTurn, activeInvestments} from './engine.js';
 
 const yearEl = document.getElementById('year');
+const budgetEl = document.getElementById('budget');
 const tempEl = document.getElementById('temp');
 const co2El  = document.getElementById('co2');
 const seaEl  = document.getElementById('sea');
@@ -9,16 +10,18 @@ const ctx = mapCanvas.getContext('2d');
 
 const actionsDiv = document.getElementById('actions');
 const nextBtn = document.getElementById('nextBtn');
+const investmentsDiv = document.getElementById('investments');
+const noInvestmentsEl = document.getElementById('no-investments');
 
 export function setupUI(){
   try {
     console.log("Configuration de l'interface...");
     console.log("Éléments DOM trouvés:", {
-      yearEl, tempEl, co2El, seaEl, mapCanvas, actionsDiv, nextBtn
+      yearEl, budgetEl, tempEl, co2El, seaEl, mapCanvas, actionsDiv, investmentsDiv, nextBtn
     });
     
     // Vérifier que tous les éléments sont trouvés
-    if(!yearEl || !tempEl || !co2El || !seaEl || !mapCanvas || !actionsDiv || !nextBtn) {
+    if(!yearEl || !budgetEl || !tempEl || !co2El || !seaEl || !mapCanvas || !actionsDiv || !investmentsDiv || !nextBtn) {
       throw new Error("Certains éléments DOM n'ont pas été trouvés");
     }
     
@@ -32,6 +35,7 @@ export function setupUI(){
         console.log(`Action cliquée: ${a.name} (${a.id})`);
         if(applyAction(a.id)){
           updateHUD();
+          updateInvestments();
           renderMap();
           console.log("Action appliquée avec succès");
         } else {
@@ -48,14 +52,45 @@ export function setupUI(){
       const ev = nextTurn();
       alert('Événement : '+ev.description);
       updateHUD();
+      updateInvestments();
       renderMap();
     });
 
     updateHUD();
+    updateInvestments();
     console.log("Interface configurée avec succès");
   } catch (error) {
     console.error("Erreur lors de la configuration de l'interface:", error);
     alert(`Erreur lors de la configuration: ${error.message}`);
+  }
+}
+
+function updateInvestments() {
+  try {
+    // Vider le contenu actuel sauf le message "aucun investissement"
+    Array.from(investmentsDiv.children)
+      .filter(el => el.id !== 'no-investments')
+      .forEach(el => el.remove());
+    
+    // Afficher/masquer le message "aucun investissement"
+    if(activeInvestments.length === 0) {
+      noInvestmentsEl.style.display = 'block';
+      return;
+    } else {
+      noInvestmentsEl.style.display = 'none';
+    }
+    
+    // Ajouter chaque investissement actif
+    activeInvestments.forEach(inv => {
+      const div = document.createElement('div');
+      div.className = 'investment-item';
+      div.innerHTML = `<strong>${inv.name}</strong>: +${inv.return} budget/tour (${inv.remainingYears} tours restants)`;
+      investmentsDiv.appendChild(div);
+    });
+    
+    console.log("Panneau d'investissements mis à jour");
+  } catch (error) {
+    console.error("Erreur lors de la mise à jour des investissements:", error);
   }
 }
 
@@ -92,6 +127,7 @@ function updateHUD(){
   try {
     console.log("Mise à jour du HUD avec l'état:", JSON.stringify(state));
     yearEl.textContent = `Année: ${state.year}`;
+    budgetEl.textContent = `Budget: ${state.budget}`;
     tempEl.textContent = `ΔT: ${state.temp.toFixed(2)}°C`;
     co2El.textContent  = `CO₂: ${state.co2.toFixed(0)} ppm`;
     seaEl.textContent  = `Niveau mer: ${state.sea.toFixed(2)} m`;

@@ -102,6 +102,27 @@ export function nextTurn(){
   return ev;
 }
 
+export function resetGame() {
+  console.log("Réinitialisation du jeu");
+  
+  // Obtenir l'année actuelle
+  const currentYear = new Date().getFullYear();
+  
+  // Créer un nouvel état à partir de DEFAULT_STATE, mais avec l'année actuelle
+  state = JSON.parse(JSON.stringify(DEFAULT_STATE));
+  state.year = currentYear;
+  
+  // Réinitialiser les autres variables
+  yearIndex = 0;
+  activeInvestments = [];
+  
+  // Sauvegarder le nouvel état
+  saveState(state);
+  console.log("Jeu réinitialisé à l'état:", JSON.stringify(state));
+  
+  return true;
+}
+
 export function initGame(){
   console.log("Initialisation du jeu avec l'état:", JSON.stringify(state));
   saveState(state);

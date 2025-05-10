@@ -1,3 +1,5 @@
+hébergé à https://djamchid.github.io/Gaia/
+
 # ClimaFutur MVP
 
 Simple educational climate‑change simulation running purely in the browser.

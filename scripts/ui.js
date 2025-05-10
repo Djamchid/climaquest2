@@ -1,0 +1,2 @@
+export const createButton=(t,cb)=>{const b=document.createElement('button');b.textContent=t;b.className='big';b.onclick=cb;return b;};
+export const snackbar=m=>{const d=document.createElement('div');d.className='card feedback';d.textContent=m;document.getElementById('app').prepend(d);setTimeout(()=>d.remove(),3000);};

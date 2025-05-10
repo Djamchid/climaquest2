@@ -7,18 +7,6 @@
   <link rel="stylesheet" href="css/main.css">
   <link rel="stylesheet" href="css/tipping-points.css">
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&display=swap" rel="stylesheet">
-  <style>
-    #debug-console {
-      margin-top: 20px;
-      border: 1px solid #ccc;
-      padding: 10px;
-      background-color: #f8f8f8;
-      max-height: 200px;
-      overflow-y: auto;
-      font-family: monospace;
-      display: none; /* Caché par défaut */
-    }
-  </style>
 </head>
 <body>
   <div class="container">
@@ -77,51 +65,176 @@
   </div>
   
   <div class="container">
-    <button id="toggleDebug" style="margin-top: 20px;">Afficher/Masquer la console de débogage</button>
-    <div id="debug-console"></div>
+    <button id="toggleJournal">Afficher le Journal de Bord</button>
+    <div id="journal-de-bord">
+      <div class="journal-header">
+        <h3>Journal de Bord</h3>
+        <div class="journal-filters">
+          <button class="journal-filter active" data-filter="all">Tous</button>
+          <button class="journal-filter" data-filter="info">Info</button>
+          <button class="journal-filter" data-filter="warning">Avertissements</button>
+          <button class="journal-filter" data-filter="error">Erreurs</button>
+          <span class="journal-entry-count">0 entrées</span>
+          <button id="clearJournal">Effacer</button>
+        </div>
+      </div>
+      <div class="journal-content">
+        <!-- Les entrées du journal seront ajoutées ici dynamiquement -->
+      </div>
+    </div>
   </div>
 
   <script>
-    // Rediriger les messages de console vers notre div de débogage
+    // Journal de Bord
     (function() {
-      const debugConsole = document.getElementById('debug-console');
-      const toggleDebug = document.getElementById('toggleDebug');
+      // Éléments DOM
+      const journalElement = document.getElementById('journal-de-bord');
+      const journalContent = journalElement.querySelector('.journal-content');
+      const toggleJournal = document.getElementById('toggleJournal');
+      const clearJournal = document.getElementById('clearJournal');
+      const entryCountElement = document.querySelector('.journal-entry-count');
+      const filterButtons = document.querySelectorAll('.journal-filter');
       
-      toggleDebug.addEventListener('click', function() {
-        debugConsole.style.display = debugConsole.style.display === 'none' ? 'block' : 'none';
+      // Variables
+      let activeFilter = 'all';
+      let entryCount = 0;
+      const maxEntries = 100; // Limite d'entrées pour éviter les problèmes de performance
+      
+      // Mettre à jour le texte du bouton selon l'état d'affichage
+      function updateToggleText() {
+        toggleJournal.textContent = journalElement.style.display === 'none' 
+          ? 'Afficher le Journal de Bord' 
+          : 'Masquer le Journal de Bord';
+      }
+      
+      // Mettre à jour le compteur d'entrées
+      function updateEntryCount() {
+        entryCountElement.textContent = `${entryCount} entrée${entryCount !== 1 ? 's' : ''}`;
+      }
+      
+      // Formater l'horodatage
+      function formatTimestamp() {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        const seconds = String(now.getSeconds()).padStart(2, '0');
+        
+        return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+      }
+      
+      // Filtrer les entrées du journal
+      function filterEntries() {
+        const entries = journalContent.querySelectorAll('.journal-entry');
+        
+        entries.forEach(entry => {
+          if (activeFilter === 'all' || entry.classList.contains(activeFilter)) {
+            entry.style.display = 'block';
+          } else {
+            entry.style.display = 'none';
+          }
+        });
+      }
+      
+      // Ajouter une entrée au journal
+      function addJournalEntry(type, args) {
+        const msg = Array.from(args).map(arg => {
+          if (typeof arg === 'object') return JSON.stringify(arg, null, 2);
+          return String(arg);
+        }).join(' ');
+        
+        // Créer l'élément d'entrée
+        const entry = document.createElement('div');
+        entry.className = `journal-entry ${type}`;
+        
+        // Ajouter l'horodatage
+        const timestamp = document.createElement('span');
+        timestamp.className = 'timestamp';
+        timestamp.textContent = formatTimestamp();
+        
+        // Ajouter le message
+        const content = document.createElement('span');
+        content.className = 'content';
+        content.textContent = msg;
+        
+        // Assembler l'entrée
+        entry.appendChild(timestamp);
+        entry.appendChild(content);
+        
+        // Ajouter au journal
+        journalContent.appendChild(entry);
+        journalContent.scrollTop = journalContent.scrollHeight;
+        
+        // Limiter le nombre d'entrées
+        entryCount++;
+        updateEntryCount();
+        
+        if (entryCount > maxEntries) {
+          const oldestEntry = journalContent.querySelector('.journal-entry');
+          if (oldestEntry) {
+            oldestEntry.remove();
+            entryCount--;
+            updateEntryCount();
+          }
+        }
+        
+        // Appliquer le filtre actif
+        if (activeFilter !== 'all' && !entry.classList.contains(activeFilter)) {
+          entry.style.display = 'none';
+        }
+      }
+      
+      // Événements
+      toggleJournal.addEventListener('click', function() {
+        journalElement.style.display = journalElement.style.display === 'none' ? 'block' : 'none';
+        updateToggleText();
       });
       
+      clearJournal.addEventListener('click', function() {
+        journalContent.innerHTML = '';
+        entryCount = 0;
+        updateEntryCount();
+      });
+      
+      filterButtons.forEach(button => {
+        button.addEventListener('click', function() {
+          // Mettre à jour la classe active
+          filterButtons.forEach(btn => btn.classList.remove('active'));
+          button.classList.add('active');
+          
+          // Mettre à jour le filtre actif
+          activeFilter = button.dataset.filter;
+          
+          // Appliquer le filtre
+          filterEntries();
+        });
+      });
+      
+      // Remplacer les fonctions de console
       const oldLog = console.log;
       const oldError = console.error;
       const oldWarn = console.warn;
       
-      function addMessage(type, args) {
-        const msg = Array.from(args).map(arg => {
-          if (typeof arg === 'object') return JSON.stringify(arg);
-          return String(arg);
-        }).join(' ');
-        
-        const div = document.createElement('div');
-        div.style.color = type === 'error' ? 'red' : type === 'warn' ? 'orange' : 'white';
-        div.textContent = msg;
-        debugConsole.appendChild(div);
-        debugConsole.scrollTop = debugConsole.scrollHeight;
-      }
-      
       console.log = function() {
         oldLog.apply(console, arguments);
-        addMessage('log', arguments);
+        addJournalEntry('info', arguments);
       };
       
       console.error = function() {
         oldError.apply(console, arguments);
-        addMessage('error', arguments);
+        addJournalEntry('error', arguments);
       };
       
       console.warn = function() {
         oldWarn.apply(console, arguments);
-        addMessage('warn', arguments);
+        addJournalEntry('warning', arguments);
       };
+      
+      // Initialisation
+      updateToggleText();
+      updateEntryCount();
     })();
   </script>
 

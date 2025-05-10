@@ -5,6 +5,7 @@
   <title>ClimaFutur – Architecte du Monde de Demain</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="css/main.css">
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&display=swap" rel="stylesheet">
   <style>
     #debug-console {
       margin-top: 20px;
@@ -19,28 +20,62 @@
   </style>
 </head>
 <body>
-  <h1>ClimaFutur – Architecte du Monde de Demain</h1>
-  <div id="hud" aria-live="polite">
-    <span id="year"></span> |
-    <span id="budget"></span> |
-    <span id="temp"></span> |
-    <span id="co2"></span> |
-    <span id="sea"></span>
+  <div class="container">
+    <h1>ClimaFutur – Architecte du Monde de Demain</h1>
+    
+    <div id="hud" aria-live="polite">
+      <span id="year"></span>
+      <span id="budget"></span>
+      <span id="temp"></span>
+      <span id="co2"></span>
+      <span id="sea"></span>
+    </div>
+
+    <canvas id="map" width="800" height="400" role="img" aria-label="Carte mondiale simulée"></canvas>
+
+    <div class="control-buttons">
+      <button id="nextBtn" class="btn btn-primary">Tour suivant</button>
+      <button id="resetBtn" class="btn btn-warning">Recommencer la simulation</button>
+    </div>
+
+    <h2>Actions disponibles</h2>
+    <div class="category-tabs" id="categoryTabs"></div>
+    <div id="actions" class="actions" role="region" aria-label="Panneau des actions"></div>
+
+    <h2>Investissements actifs</h2>
+    <div id="investments" class="investments" role="region" aria-label="Panneau des investissements">
+      <p id="no-investments">Aucun investissement actif</p>
+    </div>
+    
+    <div class="instructions">
+      <h3>Mode d'emploi</h3>
+      <div class="instructions-grid">
+        <div class="instruction-card">
+          <h4>Objectif</h4>
+          <p>Gérer l'évolution du climat en prenant des décisions stratégiques pour limiter le réchauffement climatique et ses effets.</p>
+        </div>
+        <div class="instruction-card">
+          <h4>Actions</h4>
+          <p>Choisissez parmi différentes politiques environnementales et investissements. Chaque action a un coût en budget mais produit des effets positifs sur le climat.</p>
+        </div>
+        <div class="instruction-card">
+          <h4>Budget</h4>
+          <p>Vous disposez d'un budget limité par tour. Certains investissements génèrent des retours sur plusieurs années. Gérez votre budget sagement!</p>
+        </div>
+        <div class="instruction-card">
+          <h4>Événements</h4>
+          <p>À chaque tour, un événement aléatoire se produit qui peut affecter positivement ou négativement le climat. Adaptez votre stratégie en conséquence.</p>
+        </div>
+      </div>
+    </div>
   </div>
-
-  <canvas id="map" width="800" height="400" role="img" aria-label="Carte mondiale simulée"></canvas>
-
-  <h2>Actions disponibles</h2>
-  <div id="actions" class="actions" role="region" aria-label="Panneau des actions"></div>
-
-  <h2>Investissements actifs</h2>
-  <div id="investments" class="investments" role="region" aria-label="Panneau des investissements">
-    <p id="no-investments">Aucun investissement actif</p>
-  </div>
-
-  <button id="nextBtn">Tour suivant</button>
   
-  <div>
+  <div id="eventNotification" class="event-notification" style="display: none;">
+    <h3>Événement</h3>
+    <p id="eventDescription"></p>
+  </div>
+  
+  <div class="container">
     <button id="toggleDebug" style="margin-top: 20px;">Afficher/Masquer la console de débogage</button>
     <div id="debug-console"></div>
   </div>
@@ -66,7 +101,7 @@
         }).join(' ');
         
         const div = document.createElement('div');
-        div.style.color = type === 'error' ? 'red' : type === 'warn' ? 'orange' : 'black';
+        div.style.color = type === 'error' ? 'red' : type === 'warn' ? 'orange' : 'white';
         div.textContent = msg;
         debugConsole.appendChild(div);
         debugConsole.scrollTop = debugConsole.scrollHeight;

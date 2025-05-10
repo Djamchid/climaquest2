@@ -5,6 +5,18 @@
   <title>ClimaFutur – Architecte du Monde de Demain</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="css/main.css">
+  <style>
+    #debug-console {
+      margin-top: 20px;
+      border: 1px solid #ccc;
+      padding: 10px;
+      background-color: #f8f8f8;
+      max-height: 200px;
+      overflow-y: auto;
+      font-family: monospace;
+      display: none; /* Caché par défaut */
+    }
+  </style>
 </head>
 <body>
   <h1>ClimaFutur – Architecte du Monde de Demain</h1>
@@ -21,6 +33,55 @@
   <div id="actions" class="actions" role="region" aria-label="Panneau des actions"></div>
 
   <button id="nextBtn">Tour suivant</button>
+  
+  <div>
+    <button id="toggleDebug" style="margin-top: 20px;">Afficher/Masquer la console de débogage</button>
+    <div id="debug-console"></div>
+  </div>
+
+  <script>
+    // Rediriger les messages de console vers notre div de débogage
+    (function() {
+      const debugConsole = document.getElementById('debug-console');
+      const toggleDebug = document.getElementById('toggleDebug');
+      
+      toggleDebug.addEventListener('click', function() {
+        debugConsole.style.display = debugConsole.style.display === 'none' ? 'block' : 'none';
+      });
+      
+      const oldLog = console.log;
+      const oldError = console.error;
+      const oldWarn = console.warn;
+      
+      function addMessage(type, args) {
+        const msg = Array.from(args).map(arg => {
+          if (typeof arg === 'object') return JSON.stringify(arg);
+          return String(arg);
+        }).join(' ');
+        
+        const div = document.createElement('div');
+        div.style.color = type === 'error' ? 'red' : type === 'warn' ? 'orange' : 'black';
+        div.textContent = msg;
+        debugConsole.appendChild(div);
+        debugConsole.scrollTop = debugConsole.scrollHeight;
+      }
+      
+      console.log = function() {
+        oldLog.apply(console, arguments);
+        addMessage('log', arguments);
+      };
+      
+      console.error = function() {
+        oldError.apply(console, arguments);
+        addMessage('error', arguments);
+      };
+      
+      console.warn = function() {
+        oldWarn.apply(console, arguments);
+        addMessage('warn', arguments);
+      };
+    })();
+  </script>
 
   <script type="module" src="js/main.js"></script>
 </body>

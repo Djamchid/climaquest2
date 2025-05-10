@@ -1,4 +1,5 @@
-import {state, actions, applyAction, nextTurn, activeInvestments, resetGame} from './engine.js';
+import {state, actions, applyAction, nextTurn, activeInvestments, resetGame, previousState} from './engine.js';
+import {TIPPING_POINTS} from '../data/climate-model.js';
 
 const yearEl = document.getElementById('year');
 const budgetEl = document.getElementById('budget');
@@ -105,8 +106,18 @@ export function setupUI(){
 
     nextBtn.addEventListener('click', function() {
       console.log("Passage au tour suivant");
-      const ev = nextTurn();
-      showEventNotification(ev.description);
+      const result = nextTurn();
+      
+      // Afficher notification d'événement
+      showEventNotification(result.event.description);
+      
+      // Si des points de bascule ont été atteints, les afficher également
+      if (result.tippingPoints) {
+        result.tippingPoints.forEach(tp => {
+          showTippingPointNotification(tp.description);
+        });
+      }
+      
       updateHUD();
       updateInvestments();
       renderMap();
@@ -143,6 +154,31 @@ function showEventNotification(text) {
   setTimeout(() => {
     eventNotification.style.display = 'none';
   }, 5000);
+}
+
+// Nouvelle fonction pour afficher une notification de point de bascule
+function showTippingPointNotification(text) {
+  // Créer une nouvelle notification (puisque l'événement occupe déjà la première)
+  const tippingNotification = document.createElement('div');
+  tippingNotification.className = 'event-notification tipping-point-notification';
+  tippingNotification.style.top = '100px'; // Positionner sous la notification d'événement
+  tippingNotification.style.backgroundColor = '#e91e63'; // Couleur différente pour les alertes
+  
+  const title = document.createElement('h3');
+  title.textContent = 'POINT DE BASCULE ATTEINT';
+  
+  const description = document.createElement('p');
+  description.textContent = text;
+  
+  tippingNotification.appendChild(title);
+  tippingNotification.appendChild(description);
+  
+  document.body.appendChild(tippingNotification);
+  
+  // Masquer la notification après 8 secondes (plus longue que les événements normaux)
+  setTimeout(() => {
+    tippingNotification.remove();
+  }, 8000);
 }
 
 function filterActionsByCategory() {
@@ -186,6 +222,15 @@ function updateInvestments() {
 
 function lerp(a,b,t){return a+(b-a)*t;}
 
+// Fonction pour récupérer les tendances des variables climatiques
+function getTrends() {
+  return {
+    co2: state.co2 > previousState.co2 ? 'up' : (state.co2 < previousState.co2 ? 'down' : 'stable'),
+    temp: state.temp > previousState.temp ? 'up' : (state.temp < previousState.temp ? 'down' : 'stable'),
+    sea: state.sea > previousState.sea ? 'up' : (state.sea < previousState.sea ? 'down' : 'stable')
+  };
+}
+
 export function renderMap(){
   try {
     console.log("Rendu de la carte...");
@@ -211,6 +256,9 @@ export function renderMap(){
     waterGrad.addColorStop(1, '#005cb3');
     ctx.fillStyle = waterGrad;
     ctx.fillRect(0, mapCanvas.height/2, mapCanvas.width, mapCanvas.height/2);
+    
+    // Ajout de visualisation de CO2 dans l'atmosphère
+    drawCO2Particles(t);
     
     // Draw land with more interesting shape
     ctx.beginPath();
@@ -305,10 +353,97 @@ export function renderMap(){
     }
     ctx.stroke();
     
+    // Ajouter visualisation des tendances
+    drawTrendIndicators();
+    
     console.log("Carte rendue avec succès");
   } catch (error) {
     console.error("Erreur lors du rendu de la carte:", error);
   }
+}
+
+// Fonction pour dessiner des particules de CO2 dans l'atmosphère
+function drawCO2Particles(temperatureLevel) {
+  const numParticles = Math.floor((state.co2 - 300) / 5); // 1 particule pour chaque 5 ppm au-dessus de 300
+  
+  if (numParticles <= 0) return;
+  
+  ctx.fillStyle = `rgba(100, 100, 100, ${Math.min(0.6, temperatureLevel * 0.3 + 0.1)})`;
+  
+  for (let i = 0; i < numParticles; i++) {
+    const x = Math.random() * mapCanvas.width;
+    const y = Math.random() * (mapCanvas.height / 3); // Limiter à la partie supérieure
+    const size = Math.random() * 2 + 1;
+    
+    ctx.beginPath();
+    ctx.arc(x, y, size, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+// Fonction pour dessiner les indicateurs de tendance
+function drawTrendIndicators() {
+  const trends = getTrends();
+  const iconSize = 24;
+  const padding = 10;
+  
+  // Position en haut à droite de la carte
+  let startX = mapCanvas.width - iconSize - padding;
+  let startY = padding;
+  
+  // Dessiner l'indicateur de tendance CO2
+  drawTrendIcon(startX, startY, trends.co2, 'CO₂');
+  
+  // Dessiner l'indicateur de tendance température
+  startY += iconSize + padding;
+  drawTrendIcon(startX, startY, trends.temp, 'Temp');
+  
+  // Dessiner l'indicateur de tendance niveau de la mer
+  startY += iconSize + padding;
+  drawTrendIcon(startX, startY, trends.sea, 'Mer');
+}
+
+function drawTrendIcon(x, y, trend, label) {
+  // Dessiner le fond du badge
+  ctx.fillStyle = trend === 'up' ? 'rgba(255, 99, 71, 0.7)' : 
+                 (trend === 'down' ? 'rgba(50, 205, 50, 0.7)' : 'rgba(200, 200, 200, 0.7)');
+  
+  ctx.beginPath();
+  ctx.arc(x, y, 12, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Dessiner la flèche
+  ctx.strokeStyle = 'white';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  
+  if (trend === 'up') {
+    // Flèche vers le haut
+    ctx.moveTo(x, y + 6);
+    ctx.lineTo(x, y - 6);
+    ctx.moveTo(x - 4, y - 2);
+    ctx.lineTo(x, y - 6);
+    ctx.lineTo(x + 4, y - 2);
+  } else if (trend === 'down') {
+    // Flèche vers le bas
+    ctx.moveTo(x, y - 6);
+    ctx.lineTo(x, y + 6);
+    ctx.moveTo(x - 4, y + 2);
+    ctx.lineTo(x, y + 6);
+    ctx.lineTo(x + 4, y + 2);
+  } else {
+    // Ligne horizontale pour stable
+    ctx.moveTo(x - 6, y);
+    ctx.lineTo(x + 6, y);
+  }
+  
+  ctx.stroke();
+  
+  // Ajouter étiquette
+  ctx.fillStyle = 'white';
+  ctx.font = '10px Arial';
+  ctx.textAlign = 'center';
+  ctx.fillText(label, x, y + 24);
 }
 
 function updateHUD(){
@@ -316,9 +451,21 @@ function updateHUD(){
     console.log("Mise à jour du HUD avec l'état:", JSON.stringify(state));
     yearEl.textContent = `Année: ${state.year}`;
     budgetEl.textContent = `Budget: ${state.budget}`;
+    
+    // Mise à jour avec indicateurs de tendance
+    const trends = getTrends();
+    
+    // Température avec tendance
     tempEl.textContent = `ΔT: ${state.temp.toFixed(2)}°C`;
-    co2El.textContent  = `CO₂: ${state.co2.toFixed(0)} ppm`;
-    seaEl.textContent  = `Niveau mer: ${state.sea.toFixed(2)} m`;
+    addTrendIndicator(tempEl, trends.temp);
+    
+    // CO2 avec tendance
+    co2El.textContent = `CO₂: ${state.co2.toFixed(0)} ppm`;
+    addTrendIndicator(co2El, trends.co2);
+    
+    // Niveau de la mer avec tendance
+    seaEl.textContent = `Niveau mer: ${state.sea.toFixed(2)} m`;
+    addTrendIndicator(seaEl, trends.sea);
     
     // Mettre à jour l'état des boutons en fonction du budget
     document.querySelectorAll('.action-btn').forEach(btn => {
@@ -341,6 +488,34 @@ function updateHUD(){
   } catch (error) {
     console.error("Erreur lors de la mise à jour du HUD:", error);
   }
+}
+
+// Fonction pour ajouter un indicateur de tendance à un élément HUD
+function addTrendIndicator(element, trend) {
+  // Supprimer d'abord l'ancien indicateur s'il existe
+  const oldIndicator = element.querySelector('.trend-indicator');
+  if (oldIndicator) {
+    oldIndicator.remove();
+  }
+  
+  // Créer l'indicateur de tendance
+  const indicator = document.createElement('span');
+  indicator.className = 'trend-indicator';
+  
+  // Définir l'apparence selon la tendance
+  if (trend === 'up') {
+    indicator.textContent = '↑';
+    indicator.style.color = '#ff6b6b'; // Rouge pour la hausse (mauvais)
+  } else if (trend === 'down') {
+    indicator.textContent = '↓';
+    indicator.style.color = '#4cd137'; // Vert pour la baisse (bon)
+  } else {
+    indicator.textContent = '→';
+    indicator.style.color = '#ffb800'; // Jaune pour stable
+  }
+  
+  // Ajouter l'indicateur à l'élément
+  element.appendChild(indicator);
 }
 
 function updateHUDAppearance() {
@@ -379,4 +554,17 @@ function updateHUDAppearance() {
     seaEl.style.color = 'white';
     seaEl.style.fontWeight = 'normal';
   }
+  
+  // Changer la couleur de fond du HUD selon l'intensité des problèmes climatiques
+  const severity = (
+    (state.temp > 2.0 ? 2 : (state.temp > 1.5 ? 1 : 0)) + 
+    (state.co2 > 450 ? 2 : (state.co2 > 420 ? 1 : 0)) + 
+    (state.sea > 0.5 ? 2 : (state.sea > 0.2 ? 1 : 0))
+  ) / 6; // Normaliser entre 0 et 1
+  
+  // Gradient de couleur du fond HUD selon sévérité
+  hud.style.background = `linear-gradient(90deg, 
+    var(--primary-dark), 
+    ${severity > 0.6 ? 'var(--danger)' : (severity > 0.3 ? 'var(--warning)' : 'var(--primary)')}
+  )`;
 }

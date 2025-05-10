@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>ClimaFutur – Architecte du Monde de Demain</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+  <h1>ClimaFutur – Architecte du Monde de Demain</h1>
+  <div id="hud" aria-live="polite">
+    <span id="year"></span> |
+    <span id="temp"></span> |
+    <span id="co2"></span> |
+    <span id="sea"></span>
+  </div>
+
+  <canvas id="map" width="800" height="400" role="img" aria-label="Carte mondiale simulée"></canvas>
+
+  <h2>Actions disponibles</h2>
+  <div id="actions" class="actions" role="region" aria-label="Panneau des actions"></div>
+
+  <button id="nextBtn">Tour suivant</button>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

@@ -6,6 +6,7 @@ import {saveState, loadState} from './storage.js';
 // Remplacer structuredClone par JSON parse/stringify
 export let state = loadState() || JSON.parse(JSON.stringify(DEFAULT_STATE));
 export let yearIndex = 0;
+export let activeInvestments = []; // Pour suivre les investissements actifs
 
 export function applyAction(actionId){
   console.log(`Application de l'action ${actionId}`);
@@ -20,6 +21,18 @@ export function applyAction(actionId){
   }
   
   state.budget -= action.cost;
+  
+  // Si c'est un investissement avec retour budgétaire
+  if(action.budgetReturn && action.duration) {
+    activeInvestments.push({
+      id: action.id,
+      name: action.name,
+      return: action.budgetReturn,
+      remainingYears: action.duration
+    });
+    console.log(`Nouvel investissement ajouté: ${action.name}`);
+  }
+  
   Object.entries(action.effects).forEach(([k,v])=>{
     if(state[k] !== undefined) {
       state[k] += v;
@@ -50,8 +63,38 @@ export function nextTurn(){
   applyEvent(ev);
   yearIndex++;
 
-  // Budget replenishment
+  // Budget replenishment - base amount
   state.budget = 10;
+  
+  // Bonus budget basé sur les métriques environnementales
+  // Bonus pour faible CO2
+  if(state.co2 < 400) {
+    state.budget += 2;
+    console.log("Bonus de budget pour faible CO2: +2");
+  }
+  
+  // Bonus pour biodiversité
+  if(state.biodiversity > 1) {
+    state.budget += 1;
+    console.log("Bonus de budget pour biodiversité: +1");
+  }
+  
+  // Retours sur investissements actifs
+  let investmentReturns = 0;
+  activeInvestments = activeInvestments.filter(inv => {
+    if(inv.remainingYears > 0) {
+      investmentReturns += inv.return;
+      inv.remainingYears--;
+      console.log(`Retour sur ${inv.name}: +${inv.return} (${inv.remainingYears} années restantes)`);
+      return true; // Garder cet investissement
+    }
+    console.log(`Investissement ${inv.name} terminé`);
+    return false; // Retirer cet investissement
+  });
+  
+  state.budget += investmentReturns;
+  console.log(`Total des retours sur investissement: +${investmentReturns}`);
+
   state.year +=1;
 
   saveState(state);

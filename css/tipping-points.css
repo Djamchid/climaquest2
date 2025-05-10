@@ -1,0 +1,120 @@
+/* Styles pour les notifications de point de bascule */
+.tipping-point-notification {
+  background-color: #e91e63 !important;
+  border-left: 5px solid #880e4f;
+  top: 100px;
+}
+
+.tipping-point-notification h3 {
+  color: #ffeb3b;
+  font-weight: bold;
+  margin-top: 0;
+}
+
+/* Styles pour les indicateurs de tendance */
+.trend-indicator {
+  margin-left: 8px;
+  font-weight: bold;
+  font-size: 1.2em;
+}
+
+/* Styles pour les particules de CO2 */
+.co2-particle {
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0.4;
+  animation: float 8s infinite ease-in-out;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0) translateX(0); }
+  25% { transform: translateY(-10px) translateX(5px); }
+  50% { transform: translateY(-5px) translateX(10px); }
+  75% { transform: translateY(-15px) translateX(-5px); }
+}
+
+/* Améliorations visuelles pour les points de bascule dans le HUD */
+.tipping-point-indicator {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  margin-right: 5px;
+  background-color: #e91e63;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(233, 30, 99, 0.7); }
+  70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(233, 30, 99, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(233, 30, 99, 0); }
+}
+
+/* Style pour le panneau des points de bascule */
+#tipping-points-panel {
+  margin-top: 1.5rem;
+  background-color: #fff3f3;
+  border-radius: var(--border-radius);
+  padding: 1rem;
+  border-left: 4px solid #e91e63;
+  margin-bottom: 1.5rem;
+  display: none; /* Caché par défaut */
+}
+
+#tipping-points-panel h3 {
+  color: #e91e63;
+  margin-top: 0;
+}
+
+.tipping-point-item {
+  padding: 0.8rem;
+  margin-bottom: 0.8rem;
+  background-color: #ffe0e9;
+  border-radius: var(--border-radius);
+  border-left: 4px solid #880e4f;
+}
+
+.tipping-point-item h4 {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+  color: #880e4f;
+}
+
+/* Styles pour graphiques de tendances */
+.trends-graph {
+  height: 100px;
+  margin-top: 1rem;
+  border-bottom: 1px solid #ccc;
+  position: relative;
+}
+
+.trend-line {
+  stroke-width: 2;
+  fill: none;
+}
+
+.co2-line {
+  stroke: #ff9800;
+}
+
+.temp-line {
+  stroke: #f44336;
+}
+
+.sea-line {
+  stroke: #2196f3;
+}
+
+.trend-point {
+  r: 3;
+}
+
+.trend-label {
+  font-size: 12px;
+  fill: #757575;
+}
+
+.trend-axis {
+  stroke: #ccc;
+  stroke-width: 1;
+}

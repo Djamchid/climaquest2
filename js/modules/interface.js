@@ -1,4 +1,4 @@
-import {state, actions, applyAction, nextTurn, activeInvestments} from './engine.js';
+import {state, actions, applyAction, nextTurn, activeInvestments, resetGame} from './engine.js';
 
 const yearEl = document.getElementById('year');
 const budgetEl = document.getElementById('budget');
@@ -10,8 +10,26 @@ const ctx = mapCanvas.getContext('2d');
 
 const actionsDiv = document.getElementById('actions');
 const nextBtn = document.getElementById('nextBtn');
+const resetBtn = document.getElementById('resetBtn');
 const investmentsDiv = document.getElementById('investments');
 const noInvestmentsEl = document.getElementById('no-investments');
+const categoryTabsDiv = document.getElementById('categoryTabs');
+const eventNotification = document.getElementById('eventNotification');
+const eventDescription = document.getElementById('eventDescription');
+
+// Définir les catégories et leurs couleurs pour les onglets
+const categories = [
+  { id: 'all', name: 'Toutes' },
+  { id: 'Énergie', name: 'Énergie' },
+  { id: 'Industrie', name: 'Industrie' },
+  { id: 'Agriculture', name: 'Agriculture' },
+  { id: 'Transport', name: 'Transport' },
+  { id: 'Éducation', name: 'Éducation' },
+  { id: 'Technologie', name: 'Technologie' },
+  { id: 'Économie', name: 'Économie' }
+];
+
+let activeCategory = 'all';
 
 export function setupUI(){
   try {
@@ -25,12 +43,46 @@ export function setupUI(){
       throw new Error("Certains éléments DOM n'ont pas été trouvés");
     }
     
+    // Créer les onglets de catégories
+    categories.forEach(category => {
+      const tab = document.createElement('div');
+      tab.className = 'category-tab';
+      tab.textContent = category.name;
+      tab.dataset.category = category.id;
+      
+      if (category.id === activeCategory) {
+        tab.classList.add('active');
+      }
+      
+      tab.addEventListener('click', function() {
+        // Supprimer la classe active de tous les onglets
+        document.querySelectorAll('.category-tab').forEach(t => t.classList.remove('active'));
+        // Ajouter la classe active à l'onglet cliqué
+        tab.classList.add('active');
+        // Mettre à jour la catégorie active
+        activeCategory = category.id;
+        // Filtrer les actions par catégorie
+        filterActionsByCategory();
+      });
+      
+      categoryTabsDiv.appendChild(tab);
+    });
+    
     // Create action buttons
-    actions.forEach(a=>{
-      const btn=document.createElement('button');
-      btn.textContent=`${a.name} (${a.cost})`;
-      btn.className='action-btn';
-      btn.dataset.actionId = a.id; // Ajouter l'ID comme attribut data
+    actions.forEach(a => {
+      const btn = document.createElement('button');
+      const categoryClass = a.category ? a.category.toLowerCase() : '';
+      
+      // Créer le contenu du bouton avec coût et catégorie
+      btn.innerHTML = `
+        <span>${a.name}</span>
+        <span class="action-cost">${a.cost} budget</span>
+      `;
+      
+      btn.className = `action-btn ${categoryClass}`;
+      btn.dataset.actionId = a.id;
+      btn.dataset.category = a.category;
+      
       btn.addEventListener('click', function() {
         console.log(`Action cliquée: ${a.name} (${a.id})`);
         if(applyAction(a.id)){
@@ -42,18 +94,33 @@ export function setupUI(){
           console.log("Action non appliquée (budget insuffisant?)");
         }
       });
+      
       actionsDiv.appendChild(btn);
     });
+    
+    // Filtrer initialement pour afficher toutes les actions
+    filterActionsByCategory();
     
     console.log(`${actions.length} boutons d'action créés`);
 
     nextBtn.addEventListener('click', function() {
       console.log("Passage au tour suivant");
       const ev = nextTurn();
-      alert('Événement : '+ev.description);
+      showEventNotification(ev.description);
       updateHUD();
       updateInvestments();
       renderMap();
+    });
+    
+    // Ajouter l'écouteur d'événement pour le bouton de réinitialisation
+    resetBtn.addEventListener('click', function() {
+      console.log("Réinitialisation de la simulation");
+      if (confirm('Êtes-vous sûr de vouloir recommencer la simulation ? Tout votre progrès sera perdu.')) {
+        resetGame();
+        updateHUD();
+        updateInvestments();
+        renderMap();
+      }
     });
 
     updateHUD();
@@ -63,6 +130,29 @@ export function setupUI(){
     console.error("Erreur lors de la configuration de l'interface:", error);
     alert(`Erreur lors de la configuration: ${error.message}`);
   }
+}
+
+function showEventNotification(text) {
+  // Mettre à jour le texte de la notification
+  eventDescription.textContent = text;
+  
+  // Afficher la notification
+  eventNotification.style.display = 'block';
+  
+  // Masquer la notification après 5 secondes
+  setTimeout(() => {
+    eventNotification.style.display = 'none';
+  }, 5000);
+}
+
+function filterActionsByCategory() {
+  document.querySelectorAll('.action-btn').forEach(btn => {
+    if (activeCategory === 'all' || btn.dataset.category === activeCategory) {
+      btn.style.display = 'flex';
+    } else {
+      btn.style.display = 'none';
+    }
+  });
 }
 
 function updateInvestments() {
@@ -99,23 +189,121 @@ function lerp(a,b,t){return a+(b-a)*t;}
 export function renderMap(){
   try {
     console.log("Rendu de la carte...");
-    // Simple gradient map: blue to red according to temperature
+    // Clear the canvas
+    ctx.clearRect(0, 0, mapCanvas.width, mapCanvas.height);
+    
+    // Draw sky gradient
+    const skyGrad = ctx.createLinearGradient(0, 0, 0, mapCanvas.height/2);
+    
+    // Adjust sky color based on temperature (bluer for cooler, redder for warmer)
     const maxTemp=4, minTemp=0;
     const t = Math.max(0, Math.min(1, (state.temp - minTemp)/(maxTemp - minTemp)));
-    const r = Math.floor(lerp(0,255,t));
-    const g = Math.floor(lerp(100,0,t));
-    const b = Math.floor(lerp(150,0,t));
-    ctx.fillStyle = `rgb(${r},${g},${b})`;
-    ctx.fillRect(0,0,mapCanvas.width,mapCanvas.height);
-
-    // Simple land mass
-    ctx.fillStyle='#228B22';
-    ctx.fillRect(100,100,600,200);
     
-    // Niveau de la mer
-    const seaLevel = 300 + state.sea * 50; // Représentation simple du niveau de la mer
-    ctx.fillStyle='rgba(0,0,200,0.3)';
-    ctx.fillRect(0, seaLevel, mapCanvas.width, mapCanvas.height - seaLevel);
+    skyGrad.addColorStop(0, `rgb(${Math.floor(135 + 120*t)}, ${Math.floor(206 - 106*t)}, 235)`);
+    skyGrad.addColorStop(1, `rgb(${Math.floor(200 + 55*t)}, ${Math.floor(230 - 130*t)}, 255)`);
+    
+    ctx.fillStyle = skyGrad;
+    ctx.fillRect(0, 0, mapCanvas.width, mapCanvas.height/2);
+    
+    // Draw ocean gradient
+    const waterGrad = ctx.createLinearGradient(0, mapCanvas.height/2, 0, mapCanvas.height);
+    waterGrad.addColorStop(0, '#1a8cff');
+    waterGrad.addColorStop(1, '#005cb3');
+    ctx.fillStyle = waterGrad;
+    ctx.fillRect(0, mapCanvas.height/2, mapCanvas.width, mapCanvas.height/2);
+    
+    // Draw land with more interesting shape
+    ctx.beginPath();
+    ctx.moveTo(50, mapCanvas.height/2);
+    
+    // Add some randomized hills and terrain
+    let prevX = 50;
+    const landY = mapCanvas.height/2;
+    const hills = [];
+    
+    // Generate some "hills"
+    for (let x = 100; x < mapCanvas.width - 100; x += 100) {
+      const height = Math.random() * 50 + 30;
+      hills.push({x, height});
+    }
+    
+    // Sort hills by x coordinate
+    hills.sort((a, b) => a.x - b.x);
+    
+    // Draw the land with hills
+    ctx.beginPath();
+    ctx.moveTo(0, landY);
+    
+    // Draw the first segment
+    if (hills.length > 0) {
+      ctx.quadraticCurveTo(
+        hills[0].x / 2, 
+        landY - hills[0].height / 3,
+        hills[0].x, 
+        landY - hills[0].height
+      );
+    }
+    
+    // Draw middle segments
+    for (let i = 0; i < hills.length - 1; i++) {
+      const cpX = (hills[i].x + hills[i+1].x) / 2;
+      const cpY = landY - Math.min(hills[i].height, hills[i+1].height) * 0.8;
+      
+      ctx.quadraticCurveTo(
+        cpX,
+        cpY,
+        hills[i+1].x,
+        landY - hills[i+1].height
+      );
+    }
+    
+    // Draw the last segment
+    if (hills.length > 0) {
+      const lastHill = hills[hills.length - 1];
+      ctx.quadraticCurveTo(
+        (lastHill.x + mapCanvas.width) / 2,
+        landY - lastHill.height / 3,
+        mapCanvas.width,
+        landY
+      );
+    }
+    
+    // Complete the land shape
+    ctx.lineTo(mapCanvas.width, mapCanvas.height);
+    ctx.lineTo(0, mapCanvas.height);
+    ctx.closePath();
+    
+    // Create a land gradient (greener for low temperatures, browner for high)
+    const landGrad = ctx.createLinearGradient(0, landY - 80, 0, mapCanvas.height);
+    landGrad.addColorStop(0, `rgb(${Math.floor(34 + 100*t)}, ${Math.floor(139 - 50*t)}, 34)`);
+    landGrad.addColorStop(1, `rgb(${Math.floor(85 + 80*t)}, ${Math.floor(107 - 40*t)}, 47)`);
+    
+    ctx.fillStyle = landGrad;
+    ctx.fill();
+    
+    // Niveau de la mer - maintenant avec animation de vagues
+    const seaLevel = mapCanvas.height/2 - state.sea * 50; // Représentation simple du niveau de la mer
+    
+    // Dessiner quelques vagues simples
+    ctx.fillStyle = 'rgba(26, 140, 255, 0.4)';
+    
+    // Dessiner les lignes du niveau de la mer
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    
+    // Dessiner une ligne ondulée pour représenter le niveau de la mer
+    const now = Date.now() / 1000;
+    ctx.beginPath();
+    for (let x = 0; x < mapCanvas.width; x += 5) {
+      const y = seaLevel + Math.sin(x / 30 + now) * 2;
+      if (x === 0) {
+        ctx.moveTo(x, y);
+      } else {
+        ctx.lineTo(x, y);
+      }
+    }
+    ctx.stroke();
     
     console.log("Carte rendue avec succès");
   } catch (error) {
@@ -146,8 +334,49 @@ function updateHUD(){
       }
     });
     
+    // Mettre à jour l'apparence du HUD en fonction des métriques climatiques
+    updateHUDAppearance();
+    
     console.log("HUD mis à jour avec succès");
   } catch (error) {
     console.error("Erreur lors de la mise à jour du HUD:", error);
+  }
+}
+
+function updateHUDAppearance() {
+  // Changer l'apparence du HUD en fonction de l'état climatique
+  const hud = document.getElementById('hud');
+  
+  // Température
+  if (state.temp > 2.0) {
+    tempEl.style.color = '#ff6b6b'; // Rouge pour danger
+    tempEl.style.fontWeight = 'bold';
+  } else if (state.temp > 1.5) {
+    tempEl.style.color = '#ffa502'; // Orange pour avertissement
+  } else {
+    tempEl.style.color = 'white'; // Normal
+    tempEl.style.fontWeight = 'normal';
+  }
+  
+  // CO2
+  if (state.co2 > 450) {
+    co2El.style.color = '#ff6b6b';
+    co2El.style.fontWeight = 'bold';
+  } else if (state.co2 > 420) {
+    co2El.style.color = '#ffa502';
+  } else {
+    co2El.style.color = 'white';
+    co2El.style.fontWeight = 'normal';
+  }
+  
+  // Niveau de la mer
+  if (state.sea > 0.5) {
+    seaEl.style.color = '#ff6b6b';
+    seaEl.style.fontWeight = 'bold';
+  } else if (state.sea > 0.2) {
+    seaEl.style.color = '#ffa502';
+  } else {
+    seaEl.style.color = 'white';
+    seaEl.style.fontWeight = 'normal';
   }
 }

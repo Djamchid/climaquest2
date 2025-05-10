@@ -1,7 +1,7 @@
 export default [
   {yearOffset:1, description:'Vague de chaleur extrême', effects:{temp:0.02}},
   {yearOffset:2, description:'Inondations côtières majeures', effects:{sea:0.02}},
-  {yearOffset:3, description:'Découverte d'algues absorbant CO2', effects:{co2:-0.5}},
+  {yearOffset:3, description:'Découverte d\'algues absorbant CO2', effects:{co2:-0.5}},
   {yearOffset:4, description:'Sécheresse prolongée', effects:{biodiversity:-0.2}},
   {yearOffset:5, description:'Sommet climatique mondial réussi', effects:{co2:-1}},
   {yearOffset:6, description:'Ouragan de catégorie 5', effects:{temp:0.01, sea:0.01}},

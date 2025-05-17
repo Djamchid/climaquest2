@@ -1,0 +1,795 @@
+/* Styles pour le tableau de bord du parcours climatique */
+
+:root {
+  /* Couleurs des graphiques */
+  --chart-co2: #FF9800;
+  --chart-temp: #F44336;
+  --chart-sea: #2196F3;
+  --chart-biodiversity: #4CAF50;
+  --chart-budget: #9C27B0;
+  
+  /* Couleurs des scénarios */
+  --scenario-current: #3F51B5;
+  --scenario-optimal: #4CAF50;
+  --scenario-disaster: #F44336;
+  --scenario-business: #FF9800;
+  
+  /* Couleurs des scores */
+  --score-excellent: #4CAF50;
+  --score-good: #8BC34A;
+  --score-average: #FFC107;
+  --score-poor: #FF5722;
+  --score-critical: #F44336;
+}
+
+/* --------------------------- */
+/* TABLEAU DE BORD */
+/* --------------------------- */
+#climate-dashboard {
+  background-color: white;
+  border-radius: var(--border-radius);
+  box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+  margin: 1.5rem 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.dashboard-header {
+  background: linear-gradient(90deg, #263238, #37474F);
+  color: white;
+  padding: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.dashboard-title {
+  margin: 0;
+  font-size: 1.4rem;
+}
+
+.dashboard-title:after {
+  display: none; /* Supprimer la ligne de titre par défaut */
+}
+
+.dashboard-year-range {
+  background-color: rgba(255,255,255,0.1);
+  padding: 0.5rem 1rem;
+  border-radius: var(--border-radius);
+  font-size: 0.9rem;
+}
+
+.dashboard-tabs {
+  display: flex;
+  border-bottom: 1px solid #e0e0e0;
+  background-color: #f5f5f5;
+}
+
+.dashboard-tab {
+  padding: 0.8rem 1.2rem;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  transition: var(--transition);
+  color: var(--medium);
+  font-weight: 500;
+  flex: 1;
+  text-align: center;
+}
+
+.dashboard-tab.active {
+  border-bottom-color: var(--scenario-current);
+  color: var(--scenario-current);
+  background-color: white;
+}
+
+.dashboard-content {
+  padding: 1rem;
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+/* --------------------------- */
+/* SCORES ET INDICATEURS */
+/* --------------------------- */
+.climate-score-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.climate-score-card {
+  background-color: white;
+  border-radius: var(--border-radius);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.score-card-title {
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+  color: var(--dark);
+  font-size: 1rem;
+}
+
+.score-card-value {
+  font-size: 2.5rem;
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+  line-height: 1;
+  transition: var(--transition);
+}
+
+.score-card-change {
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.5rem;
+}
+
+.score-card-change.positive {
+  color: var(--score-excellent);
+}
+
+.score-card-change.negative {
+  color: var(--score-critical);
+}
+
+.score-card-change-icon {
+  margin-right: 0.3rem;
+}
+
+.score-card-trend {
+  width: 100%;
+  height: 40px;
+  margin-top: 0.5rem;
+}
+
+/* Score global */
+.global-score-card {
+  grid-column: span 2;
+  background: linear-gradient(135deg, #f5f5f5, #fff);
+  position: relative;
+  overflow: hidden;
+}
+
+.global-score-value {
+  font-size: 3.5rem;
+  position: relative;
+  z-index: 1;
+}
+
+.global-score-circle {
+  position: absolute;
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 0;
+}
+
+.global-score-level {
+  margin-top: 0.5rem;
+  font-weight: bold;
+  padding: 0.3rem 1rem;
+  border-radius: 20px;
+  color: white;
+  display: inline-block;
+  position: relative;
+  z-index: 1;
+}
+
+.score-excellent {
+  background-color: var(--score-excellent);
+}
+
+.score-good {
+  background-color: var(--score-good);
+}
+
+.score-average {
+  background-color: var(--score-average);
+}
+
+.score-poor {
+  background-color: var(--score-poor);
+}
+
+.score-critical {
+  background-color: var(--score-critical);
+}
+
+/* --------------------------- */
+/* GRAPHIQUES ET VISUALISATIONS */
+/* --------------------------- */
+.climate-chart-container {
+  background-color: white;
+  border-radius: var(--border-radius);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.chart-title {
+  font-weight: bold;
+  font-size: 1.1rem;
+  color: var(--dark);
+  margin: 0;
+}
+
+.chart-controls {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.chart-control {
+  background-color: #f5f5f5;
+  border: none;
+  border-radius: var(--border-radius);
+  padding: 0.3rem 0.8rem;
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: var(--transition);
+}
+
+.chart-control.active {
+  background-color: var(--scenario-current);
+  color: white;
+}
+
+.climate-chart {
+  width: 100%;
+  height: 300px;
+  margin-top: 1rem;
+}
+
+/* Légende des graphiques */
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-top: 1rem;
+  justify-content: center;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.legend-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  margin-right: 0.5rem;
+  display: inline-block;
+}
+
+.legend-co2 {
+  background-color: var(--chart-co2);
+}
+
+.legend-temp {
+  background-color: var(--chart-temp);
+}
+
+.legend-sea {
+  background-color: var(--chart-sea);
+}
+
+.legend-biodiversity {
+  background-color: var(--chart-biodiversity);
+}
+
+.legend-budget {
+  background-color: var(--chart-budget);
+}
+
+.legend-current {
+  background-color: var(--scenario-current);
+}
+
+.legend-optimal {
+  background-color: var(--scenario-optimal);
+}
+
+.legend-disaster {
+  background-color: var(--scenario-disaster);
+}
+
+.legend-business {
+  background-color: var(--scenario-business);
+}
+
+/* --------------------------- */
+/* CHRONOLOGIE DES DÉCISIONS */
+/* --------------------------- */
+.climate-timeline {
+  position: relative;
+  margin: 2rem 0;
+  padding-left: 2rem;
+}
+
+.timeline-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 10px;
+  width: 4px;
+  background-color: #e0e0e0;
+  border-radius: 2px;
+}
+
+.timeline-event {
+  position: relative;
+  margin-bottom: 2rem;
+  transition: var(--transition);
+}
+
+.timeline-event:hover {
+  transform: translateX(5px);
+}
+
+.timeline-dot {
+  position: absolute;
+  left: -2rem;
+  top: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background-color: white;
+  border: 4px solid #9E9E9E;
+  z-index: 1;
+}
+
+.timeline-year {
+  position: absolute;
+  left: -2rem;
+  top: 25px;
+  transform: translateX(-50%);
+  font-size: 0.8rem;
+  color: var(--medium);
+  font-weight: bold;
+}
+
+.timeline-card {
+  background-color: white;
+  border-radius: var(--border-radius);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  padding: 1rem;
+  margin-left: 1rem;
+  border-left: 4px solid #9E9E9E;
+}
+
+/* Types d'événements */
+.timeline-action .timeline-dot {
+  border-color: var(--chart-co2);
+}
+
+.timeline-action .timeline-card {
+  border-left-color: var(--chart-co2);
+}
+
+.timeline-event-choice .timeline-dot {
+  border-color: var(--chart-temp);
+}
+
+.timeline-event-choice .timeline-card {
+  border-left-color: var(--chart-temp);
+}
+
+.timeline-tipping-point .timeline-dot {
+  border-color: var(--score-critical);
+}
+
+.timeline-tipping-point .timeline-card {
+  border-left-color: var(--score-critical);
+}
+
+.timeline-milestone .timeline-dot {
+  border-color: var(--score-excellent);
+}
+
+.timeline-milestone .timeline-card {
+  border-left-color: var(--score-excellent);
+}
+
+.timeline-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.8rem;
+}
+
+.timeline-card-title {
+  font-weight: bold;
+  color: var(--dark);
+  margin: 0;
+}
+
+.timeline-card-type {
+  font-size: 0.8rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 12px;
+  color: white;
+  background-color: #9E9E9E;
+}
+
+.timeline-card-type.action {
+  background-color: var(--chart-co2);
+}
+
+.timeline-card-type.event-choice {
+  background-color: var(--chart-temp);
+}
+
+.timeline-card-type.tipping-point {
+  background-color: var(--score-critical);
+}
+
+.timeline-card-type.milestone {
+  background-color: var(--score-excellent);
+}
+
+.timeline-card-description {
+  margin-bottom: 0.8rem;
+}
+
+.timeline-card-effects {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  padding-top: 0.8rem;
+  border-top: 1px solid #eee;
+  font-size: 0.9rem;
+}
+
+.timeline-effect {
+  display: flex;
+  align-items: center;
+}
+
+.timeline-effect-icon {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  margin-right: 0.5rem;
+  color: white;
+  font-size: 0.8rem;
+}
+
+.co2-icon {
+  background-color: var(--chart-co2);
+}
+
+.temp-icon {
+  background-color: var(--chart-temp);
+}
+
+.sea-icon {
+  background-color: var(--chart-sea);
+}
+
+.biodiversity-icon {
+  background-color: var(--chart-biodiversity);
+}
+
+.budget-icon {
+  background-color: var(--chart-budget);
+}
+
+.timeline-effect-value.positive {
+  color: var(--score-excellent);
+}
+
+.timeline-effect-value.negative {
+  color: var(--score-critical);
+}
+
+/* --------------------------- */
+/* COMPARAISON DE SCÉNARIOS */
+/* --------------------------- */
+.scenarios-comparison {
+  background-color: white;
+  border-radius: var(--border-radius);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.scenario-header {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.scenario-header h3 {
+  margin-bottom: 0.5rem;
+}
+
+.scenario-description {
+  color: var(--medium);
+  font-size: 0.9rem;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.scenario-cards {
+  display: flex;
+  gap: 1rem;
+  overflow-x: auto;
+  padding-bottom: 1rem;
+}
+
+.scenario-card {
+  background-color: #f5f5f5;
+  border-radius: var(--border-radius);
+  min-width: 200px;
+  flex: 1;
+  padding: 1rem;
+  position: relative;
+  overflow: hidden;
+  border-top: 4px solid #9E9E9E;
+}
+
+.scenario-card.current {
+  border-top-color: var(--scenario-current);
+}
+
+.scenario-card.optimal {
+  border-top-color: var(--scenario-optimal);
+}
+
+.scenario-card.business {
+  border-top-color: var(--scenario-business);
+}
+
+.scenario-card.disaster {
+  border-top-color: var(--scenario-disaster);
+}
+
+.scenario-card-header {
+  text-align: center;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.scenario-card-title {
+  font-weight: bold;
+  margin-bottom: 0.3rem;
+}
+
+.scenario-card-score {
+  font-size: 2rem;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.scenario-card-score.excellent {
+  color: var(--score-excellent);
+}
+
+.scenario-card-score.good {
+  color: var(--score-good);
+}
+
+.scenario-card-score.average {
+  color: var(--score-average);
+}
+
+.scenario-card-score.poor {
+  color: var(--score-poor);
+}
+
+.scenario-card-score.critical {
+  color: var(--score-critical);
+}
+
+.scenario-metrics {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.scenario-metric {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #eee;
+}
+
+.scenario-metric:last-child {
+  border-bottom: none;
+}
+
+.scenario-metric-label {
+  display: flex;
+  align-items: center;
+}
+
+.scenario-metric-icon {
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  margin-right: 0.5rem;
+  color: white;
+  font-size: 0.7rem;
+}
+
+.scenario-metric-value {
+  font-weight: bold;
+}
+
+/* Badges et réalisations */
+.badges-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.badge-card {
+  background-color: white;
+  border-radius: var(--border-radius);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  padding: 1rem;
+  text-align: center;
+  transition: var(--transition);
+  position: relative;
+  overflow: hidden;
+}
+
+.badge-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.badge-icon {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+  color: var(--scenario-current);
+}
+
+.badge-title {
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.badge-date {
+  font-size: 0.8rem;
+  color: var(--medium);
+}
+
+.badge-card.locked {
+  background-color: #f5f5f5;
+  color: var(--medium);
+}
+
+.badge-card.locked .badge-icon {
+  color: #bdbdbd;
+}
+
+.badge-locked-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+}
+
+.badge-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background-color: #eee;
+}
+
+.badge-progress-bar {
+  height: 100%;
+  background-color: var(--scenario-current);
+}
+
+/* Responsive styles */
+@media (max-width: 768px) {
+  .climate-score-cards {
+    grid-template-columns: 1fr;
+  }
+  
+  .global-score-card {
+    grid-column: 1;
+  }
+  
+  .dashboard-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .dashboard-year-range {
+    margin-top: 0.5rem;
+  }
+  
+  .dashboard-tabs {
+    flex-direction: column;
+  }
+  
+  .dashboard-tab {
+    text-align: left;
+    padding: 0.6rem 1rem;
+    border-bottom: 1px solid #e0e0e0;
+    border-left: 3px solid transparent;
+  }
+  
+  .dashboard-tab.active {
+    border-bottom: 1px solid #e0e0e0;
+    border-left: 3px solid var(--scenario-current);
+  }
+  
+  .chart-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .chart-controls {
+    margin-top: 0.5rem;
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .scenario-cards {
+    flex-direction: column;
+  }
+  
+  .scenario-card {
+    min-width: auto;
+  }
+  
+  .climate-timeline {
+    padding-left: 1.5rem;
+  }
+  
+  .timeline-dot {
+    left: -1.5rem;
+    width: 16px;
+    height: 16px;
+    border-width: 3px;
+  }
+  
+  .timeline-year {
+    left: -1.5rem;
+  }
+}

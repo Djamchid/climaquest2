@@ -1,0 +1,174 @@
+/* Styles pour les boutons d'info et modals */
+
+/* Style pour le bouton d'info */
+.action-btn {
+  position: relative;
+  padding-right: 2.5rem; /* Espace pour le bouton d'info */
+}
+
+.action-btn-content {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.action-info-btn {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  background-color: var(--primary-light);
+  color: var(--primary-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-weight: bold;
+  font-style: italic;
+  font-family: serif;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  transition: var(--transition);
+}
+
+.action-info-btn:hover {
+  background-color: var(--primary);
+  color: white;
+  transform: scale(1.1);
+}
+
+/* Styles pour le modal d'information */
+#action-info-modal {
+  display: none;
+  position: fixed;
+  z-index: 1000;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0,0,0,0.7);
+  animation: fadeIn 0.3s ease-out;
+}
+
+.modal-content {
+  position: relative;
+  background-color: white;
+  margin: 10% auto;
+  padding: 1.5rem;
+  border-radius: var(--border-radius);
+  box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+  max-width: 500px;
+  width: 90%;
+  animation: slideDown 0.4s ease-out;
+}
+
+.close-modal {
+  position: absolute;
+  top: 0.5rem;
+  right: 1rem;
+  color: var(--medium);
+  font-size: 1.8rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.close-modal:hover {
+  color: var(--danger);
+}
+
+.action-details {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--primary-light);
+}
+
+.action-category, .action-cost-info {
+  margin-bottom: 0.5rem;
+}
+
+.effects-container {
+  margin-bottom: 1.5rem;
+}
+
+.effects-container h4 {
+  margin-bottom: 0.8rem;
+  color: var(--primary-dark);
+}
+
+.effects-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.effects-list li {
+  padding: 0.5rem;
+  margin-bottom: 0.5rem;
+  border-radius: var(--border-radius);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.positive-effect {
+  background-color: rgba(76, 175, 80, 0.2);
+  border-left: 4px solid #4CAF50;
+}
+
+.negative-effect {
+  background-color: rgba(244, 67, 54, 0.2);
+  border-left: 4px solid #F44336;
+}
+
+.effect-label {
+  font-weight: 500;
+}
+
+.effect-value {
+  font-weight: bold;
+}
+
+.budget-return-info {
+  background-color: rgba(255, 152, 0, 0.1);
+  border-left: 4px solid #FF9800;
+  padding: 0.8rem;
+  border-radius: var(--border-radius);
+}
+
+.budget-return-info h4 {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+  color: #E65100;
+}
+
+/* Animations */
+@keyframes slideDown {
+  from { transform: translateY(-50px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .modal-content {
+    margin: 15% auto;
+    width: 95%;
+    padding: 1rem;
+  }
+  
+  .action-details {
+    flex-direction: column;
+  }
+}

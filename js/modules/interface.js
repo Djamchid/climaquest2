@@ -207,6 +207,8 @@ function getTrends() {
   };
 }
 
+// Modifications à apporter à la fonction renderMap() dans js/modules/interface.js
+
 export function renderMap(){
   try {
     console.log("Rendu de la carte...");
@@ -226,7 +228,7 @@ export function renderMap(){
     ctx.fillStyle = skyGrad;
     ctx.fillRect(0, 0, mapCanvas.width, mapCanvas.height/2);
     
-    // Draw ocean gradient
+    // Draw ocean gradient - avec hauteur réduite
     const waterGrad = ctx.createLinearGradient(0, mapCanvas.height/2, 0, mapCanvas.height);
     waterGrad.addColorStop(0, '#1a8cff');
     waterGrad.addColorStop(1, '#005cb3');
@@ -242,9 +244,9 @@ export function renderMap(){
     const landY = mapCanvas.height/2;
     const hills = [];
     
-    // Generate some "hills"
-    for (let x = 100; x < mapCanvas.width - 100; x += 100) {
-      const height = Math.random() * 50 + 30;
+    // Generate some "hills" - nombre réduit pour s'adapter à la hauteur
+    for (let x = 100; x < mapCanvas.width - 100; x += 120) {
+      const height = Math.random() * 40 + 25; // Hauteur réduite des collines
       hills.push({x, height});
     }
     
@@ -289,13 +291,13 @@ export function renderMap(){
       );
     }
     
-    // Complete the land shape
-    ctx.lineTo(mapCanvas.width, mapCanvas.height);
-    ctx.lineTo(0, mapCanvas.height);
+    // Complete the land shape - partie souterraine réduite
+    ctx.lineTo(mapCanvas.width, mapCanvas.height * 0.8); // Réduction de la profondeur
+    ctx.lineTo(0, mapCanvas.height * 0.8); // Réduction de la profondeur
     ctx.closePath();
     
     // Create a land gradient (greener for low temperatures, browner for high)
-    const landGrad = ctx.createLinearGradient(0, landY - 80, 0, mapCanvas.height);
+    const landGrad = ctx.createLinearGradient(0, landY - 80, 0, mapCanvas.height * 0.8);
     landGrad.addColorStop(0, `rgb(${Math.floor(34 + 100*t)}, ${Math.floor(139 - 50*t)}, 34)`);
     landGrad.addColorStop(1, `rgb(${Math.floor(85 + 80*t)}, ${Math.floor(107 - 40*t)}, 47)`);
     
@@ -331,7 +333,6 @@ export function renderMap(){
     console.error("Erreur lors du rendu de la carte:", error);
   }
 }
-
 function updateHUD(){
   try {
     console.log("Mise à jour du HUD avec l'état:", JSON.stringify(state));

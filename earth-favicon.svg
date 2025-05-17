@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Fond de l'espace -->
+  <rect width="100%" height="100%" fill="#000" />
+  
+  <!-- Planète Terre -->
+  <g transform="translate(50, 50)">
+    <!-- Animation de rotation -->
+    <animateTransform 
+      attributeName="transform" 
+      attributeType="XML" 
+      type="rotate" 
+      from="0" 
+      to="360" 
+      dur="8s" 
+      repeatCount="indefinite" 
+      additive="sum" />
+    
+    <!-- Cercle de base (océans) -->
+    <circle r="40" fill="#2B65EC" />
+    
+    <!-- Continents -->
+    <path d="M-15,-5 Q-20,10 -10,20 T-20,30 Q0,35 20,25 T30,5 Q20,-10 10,-25 T-15,-5 Z" fill="#4CBB17" />
+    <path d="M0,-35 Q-10,-30 -5,-20 T10,-15 Q15,-25 0,-35 Z" fill="#4CBB17" />
+    <path d="M-30,-10 Q-35,-5 -32,5 T-25,10 Q-20,5 -25,-5 T-30,-10 Z" fill="#4CBB17" />
+    <path d="M15,0 Q10,10 20,15 T30,10 Q25,0 15,0 Z" fill="#4CBB17" />
+    <path d="M-10,0 Q-20,5 -15,15 T0,20 Q5,15 0,5 T-10,0 Z" fill="#4CBB17" />
+    
+    <!-- Nuages atmosphériques -->
+    <path d="M-35,0 Q-30,-5 -25,0 T-15,5 Q-20,10 -30,5 T-35,0 Z" fill="#ffffff" opacity="0.6" />
+    <path d="M20,-20 Q25,-25 30,-20 T35,-15 Q30,-10 25,-15 T20,-20 Z" fill="#ffffff" opacity="0.6" />
+    <path d="M10,30 Q15,25 20,30 T25,35 Q20,40 15,35 T10,30 Z" fill="#ffffff" opacity="0.6" />
+  </g>
+</svg>

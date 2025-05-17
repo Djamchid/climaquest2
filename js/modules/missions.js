@@ -1,7 +1,7 @@
 // Système de missions pour ClimaQuest
 import { state } from './engine.js';
 import { saveState } from './storage.js';
-import { showNotification } from './interface.js';
+import { showNotification } from './missions-interface.js';
 
 // Définition des ères climatiques
 export const CLIMATE_ERAS = [

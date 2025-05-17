@@ -94,12 +94,12 @@ h1:after, h2:after {
   background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" fill="white" viewBox="0 0 24 24"><path d="M22 18v-2h-1.5c-.3 0-.5-.2-.5-.5s.2-.5.5-.5H22v-2h-1.5c-.3 0-.5-.2-.5-.5s.2-.5.5-.5H22v-2h-1.5c-.3 0-.5-.2-.5-.5s.2-.5.5-.5H22V8h-1.5c-.3 0-.5-.2-.5-.5s.2-.5.5-.5H22V5c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v13c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2zM12 5c3.9 0 7 3.1 7 7s-3.1 7-7 7-7-3.1-7-7 3.1-7 7-7zm0 2c-2.8 0-5 2.2-5 5s2.2 5 5 5 5-2.2 5-5-2.2-5-5-5z"/></svg>'); 
 }
 
-/* Carte modernisée */
+/* Modifications nécessaires pour le canvas avec hauteur réduite */
 canvas {
   border: none;
   border-radius: var(--border-radius);
   display: block;
-  margin-bottom: 1.5rem;
+  margin: 1.5rem 0; /* Ajouté une marge en haut et en bas */
   width: 100%;
   height: auto;
   box-shadow: 0 6px 10px rgba(0,0,0,0.1);

@@ -1,7 +1,15 @@
-import {DEFAULT_STATE} from '../data/climate-model.js';
+// Moteur de jeu amélioré pour ClimaQuest
+import { DEFAULT_STATE } from '../data/climate-model.js';
 import actions from '../data/actions.js';
 import events from '../data/events.js';
-import {saveState, loadState} from './storage.js';
+import { saveState, loadState } from './storage.js';
+import { setupMissionsInterface, updateAfterTurn, showNotification } from './missions-interface.js';
+import { missionSystem } from './missions.js';
+import { narrativeSystem } from './narrative-events.js';
+import { achievementSystem } from './achievements.js';
+import { climatePathTracker } from './progress-tracking.js';
+import { visualizationSystem } from './visualization.js';
+import { setupClimateDashboard, updateDashboard } from './climate-dashboard.js';
 
 // Remplacer structuredClone par JSON parse/stringify
 export let state = loadState() || JSON.parse(JSON.stringify(DEFAULT_STATE));
@@ -35,16 +43,29 @@ function ensureStateFields() {
   if (state.sea === undefined) {
     state.sea = 0;
   }
+  
+  // Nouvelles statistiques pour le système de badges
+  if (!state.stats) {
+    state.stats = {
+      tech_investments: 0,
+      renewable_actions: 0,
+      diplomatic_choices: 0,
+      education_actions: 0,
+      social_satisfaction: 70,
+      reputation: 50,
+      public_awareness: 50
+    };
+  }
 }
 
-export function applyAction(actionId){
+export function applyAction(actionId) {
   console.log(`Application de l'action ${actionId}`);
-  const action = actions.find(a=>a.id===actionId);
-  if(!action) {
+  const action = actions.find(a => a.id === actionId);
+  if (!action) {
     console.error(`Action ${actionId} non trouvée`);
     return false;
   }
-  if(state.budget < action.cost) {
+  if (state.budget < action.cost) {
     console.log(`Budget insuffisant. Actuel: ${state.budget}, Requis: ${action.cost}`);
     return false;
   }
@@ -55,7 +76,7 @@ export function applyAction(actionId){
   state.budget -= action.cost;
   
   // Si c'est un investissement avec retour budgétaire
-  if(action.budgetReturn && action.duration) {
+  if (action.budgetReturn && action.duration) {
     activeInvestments.push({
       id: action.id,
       name: action.name,
@@ -65,29 +86,103 @@ export function applyAction(actionId){
     console.log(`Nouvel investissement ajouté: ${action.name}`);
   }
   
-  Object.entries(action.effects).forEach(([k,v])=>{
-    if(state[k] !== undefined) {
+  // Appliquer les effets de l'action sur l'état du jeu
+  Object.entries(action.effects).forEach(([k, v]) => {
+    if (state[k] !== undefined) {
       state[k] += v;
     } else {
       console.warn(`Propriété ${k} non trouvée dans l'état`);
     }
   });
   
+  // Mettre à jour les statistiques pour le système de badges
+  updateStatsFromAction(action);
+  
+  // Enregistrer l'action comme une décision clé dans le tracker de parcours
+  climatePathTracker.recordDecision({
+    id: `action-${actionId}-${Date.now()}`,
+    type: 'action',
+    name: action.name,
+    description: `Vous avez mis en œuvre: ${action.name}`,
+    year: state.year,
+    effects: action.effects
+  });
+  
+  // Mettre à jour l'interface du jeu
+  updateGameInterface();
+  
   console.log("État après action:", JSON.stringify(state));
   return true;
 }
 
-function applyEvent(ev){
+// Mettre à jour les statistiques pour le système de badges en fonction de l'action appliquée
+function updateStatsFromAction(action) {
+  // Mise à jour des stats en fonction de la catégorie de l'action
+  switch (action.category) {
+    case 'Technologie':
+      state.stats.tech_investments++;
+      break;
+    case 'Énergie':
+      if (action.id === 'solar' || action.id === 'wind') {
+        state.stats.renewable_actions++;
+      }
+      break;
+    case 'Éducation':
+      state.stats.education_actions++;
+      // Augmenter la sensibilisation du public
+      state.stats.public_awareness = Math.min(100, state.stats.public_awareness + 2);
+      break;
+    case 'Économie':
+      // Suivre les investissements économiques
+      if (action.budgetReturn) {
+        state.stats.tech_investments++;
+      }
+      break;
+  }
+  
+  // Mise à jour des autres statistiques en fonction des effets
+  if (action.effects) {
+    // Impact sur la satisfaction sociale
+    if (action.effects.biodiversity && action.effects.biodiversity > 0) {
+      state.stats.social_satisfaction = Math.min(100, state.stats.social_satisfaction + 1);
+    }
+    
+    // Impact sur la réputation internationale
+    if (action.effects.co2 && action.effects.co2 < -1.0) {
+      state.stats.reputation = Math.min(100, state.stats.reputation + 2);
+    }
+  }
+  
+  // Mettre à jour les statistiques dans le système de badges
+  achievementSystem.updateStat('tech_investments', state.stats.tech_investments);
+  achievementSystem.updateStat('renewable_actions', state.stats.renewable_actions);
+  achievementSystem.updateStat('education_actions', state.stats.education_actions);
+  achievementSystem.updateStat('public_awareness', state.stats.public_awareness);
+  achievementSystem.updateStat('social_satisfaction', state.stats.social_satisfaction);
+  achievementSystem.updateStat('reputation', state.stats.reputation);
+}
+
+function applyEvent(ev) {
   console.log(`Application de l'événement: ${ev.description}`);
   // Sauvegarder l'état précédent pour le suivi des tendances
   previousState = JSON.parse(JSON.stringify(state));
   
-  Object.entries(ev.effects).forEach(([k,v])=>{
-    if(state[k] !== undefined) {
+  Object.entries(ev.effects).forEach(([k, v]) => {
+    if (state[k] !== undefined) {
       state[k] += v;
     } else {
       console.warn(`Propriété ${k} non trouvée dans l'état`);
     }
+  });
+  
+  // Enregistrer l'événement aléatoire dans le tracker de parcours
+  climatePathTracker.recordDecision({
+    id: `random-event-${Date.now()}`,
+    type: 'random-event',
+    name: ev.description,
+    description: ev.description,
+    year: state.year,
+    effects: ev.effects
   });
 }
 
@@ -153,6 +248,25 @@ function checkTippingPoints() {
     state.tippingPoints.greenland = true;
     state.sea += 0.05; // Effet immédiat
     console.log("POINT DE BASCULE: La fonte du Groenland s'accélère");
+    
+    // Enregistrer le point de bascule dans le tracker de parcours
+    climatePathTracker.recordCriticalEvent({
+      id: "tipping-point-greenland",
+      name: "Point de Bascule: Fonte du Groenland",
+      description: "Le réchauffement a atteint un seuil critique, déclenchant une fonte irréversible du Groenland. Cela accélère la montée des eaux et perturbe la circulation océanique.",
+      year: state.year,
+      type: "tipping-point",
+      impact: "negative",
+      effects: { sea: 0.05 }
+    });
+    
+    // Afficher une notification au joueur
+    showNotification({
+      title: "Point de Bascule Atteint",
+      message: "La fonte du Groenland s'accélère, marquant un point de non-retour pour cette calotte glaciaire.",
+      type: "tipping-point",
+      duration: 8000
+    });
   }
   
   // Point de bascule : instabilité de l'Antarctique Ouest
@@ -160,6 +274,25 @@ function checkTippingPoints() {
     state.tippingPoints.westAntarctica = true;
     state.sea += 0.08;
     console.log("POINT DE BASCULE: L'Antarctique Ouest commence à s'effondrer");
+    
+    // Enregistrer le point de bascule dans le tracker de parcours
+    climatePathTracker.recordCriticalEvent({
+      id: "tipping-point-west-antarctica",
+      name: "Point de Bascule: Effondrement de l'Antarctique Ouest",
+      description: "Les plateformes glaciaires de l'Antarctique Ouest sont déstabilisées, entraînant une accélération de la fonte et une hausse significative du niveau des mers.",
+      year: state.year,
+      type: "tipping-point",
+      impact: "negative",
+      effects: { sea: 0.08 }
+    });
+    
+    // Afficher une notification au joueur
+    showNotification({
+      title: "Point de Bascule Critique",
+      message: "L'instabilité de l'Antarctique Ouest s'accélère, menaçant d'une montée des eaux de plusieurs mètres à long terme.",
+      type: "tipping-point",
+      duration: 8000
+    });
   }
   
   // Point de bascule : dépérissement de l'Amazonie
@@ -168,6 +301,56 @@ function checkTippingPoints() {
     state.co2 += 5.0;
     state.biodiversity -= 1.0;
     console.log("POINT DE BASCULE: La forêt amazonienne commence à se transformer en savane");
+    
+    // Enregistrer le point de bascule dans le tracker de parcours
+    climatePathTracker.recordCriticalEvent({
+      id: "tipping-point-amazon",
+      name: "Point de Bascule: Dépérissement de l'Amazonie",
+      description: "La forêt amazonienne commence à se transformer en savane, libérant d'énormes quantités de carbone et réduisant drastiquement la biodiversité mondiale.",
+      year: state.year,
+      type: "tipping-point",
+      impact: "negative",
+      effects: { co2: 5.0, biodiversity: -1.0 }
+    });
+    
+    // Afficher une notification au joueur
+    showNotification({
+      title: "Point de Bascule Écologique",
+      message: "L'Amazonie commence à se transformer en savane, libérant d'énormes quantités de CO2 et détruisant un habitat crucial.",
+      type: "tipping-point",
+      duration: 8000
+    });
+    
+    // Déclencher un effet visuel de sécheresse dans la visualisation
+    if (visualizationSystem) {
+      visualizationSystem.triggerEffect('drought', 10000, 0.8);
+    }
+  }
+  
+  // Point de bascule : dégel du permafrost
+  if (state.temp > 1.5 && !state.tippingPoints.permafrost) {
+    state.tippingPoints.permafrost = true;
+    state.co2 += 3.0;
+    console.log("POINT DE BASCULE: Le dégel du permafrost libère du méthane");
+    
+    // Enregistrer le point de bascule dans le tracker de parcours
+    climatePathTracker.recordCriticalEvent({
+      id: "tipping-point-permafrost",
+      name: "Point de Bascule: Dégel du Permafrost",
+      description: "Le permafrost arctique a commencé à dégeler massivement, libérant d'énormes quantités de méthane et de CO2 piégés depuis des millénaires.",
+      year: state.year,
+      type: "tipping-point",
+      impact: "negative",
+      effects: { co2: 3.0 }
+    });
+    
+    // Afficher une notification au joueur
+    showNotification({
+      title: "Point de Bascule Arctique",
+      message: "Le permafrost commence à dégeler massivement, libérant du méthane et accélérant le réchauffement climatique.",
+      type: "tipping-point",
+      duration: 8000
+    });
   }
 }
 
@@ -185,8 +368,14 @@ function naturalEmissionsIncrease() {
   console.log(`Émissions naturelles: +${emissionsIncrease.toFixed(2)} CO₂`);
 }
 
-export function nextTurn(){
+export function nextTurn() {
   console.log("Passage au tour suivant");
+  
+  // Vérifier si un événement narratif est actif
+  if (narrativeSystem.activeEvent) {
+    console.log("Un événement narratif est en cours, attendez de faire un choix");
+    return false;
+  }
   
   // S'assurer que toutes les propriétés existent
   ensureStateFields();
@@ -215,13 +404,13 @@ export function nextTurn(){
   
   // Bonus budget basé sur les métriques environnementales
   // Bonus pour faible CO2
-  if(state.co2 < 400) {
+  if (state.co2 < 400) {
     state.budget += 2;
     console.log("Bonus de budget pour faible CO2: +2");
   }
   
   // Bonus pour biodiversité
-  if(state.biodiversity > 1) {
+  if (state.biodiversity > 1) {
     state.budget += 1;
     console.log("Bonus de budget pour biodiversité: +1");
   }
@@ -229,7 +418,7 @@ export function nextTurn(){
   // Retours sur investissements actifs
   let investmentReturns = 0;
   activeInvestments = activeInvestments.filter(inv => {
-    if(inv.remainingYears > 0) {
+    if (inv.remainingYears > 0) {
       investmentReturns += inv.return;
       inv.remainingYears--;
       console.log(`Retour sur ${inv.name}: +${inv.return} (${inv.remainingYears} années restantes)`);
@@ -242,8 +431,23 @@ export function nextTurn(){
   state.budget += investmentReturns;
   console.log(`Total des retours sur investissement: +${investmentReturns}`);
 
-  state.year +=1;
+  state.year += 1;
 
+  // Vérifier les nouveaux événements narratifs
+  const nextEvent = narrativeSystem.checkEventTriggers();
+  if (nextEvent) {
+    console.log(`Nouvel événement narratif déclenché: ${nextEvent.title}`);
+  }
+  
+  // Mettre à jour les systèmes de jeu
+  updateAfterTurn();
+  updateDashboard();
+  
+  // Mettre à jour la visualisation
+  if (visualizationSystem) {
+    visualizationSystem.updateVisualization();
+  }
+  
   saveState(state);
   console.log("État sauvegardé:", JSON.stringify(state));
   
@@ -270,14 +474,23 @@ export function resetGame() {
   activeInvestments = [];
   previousState = JSON.parse(JSON.stringify(state));
   
+  // Réinitialiser les systèmes
+  missionSystem.initialize();
+  narrativeSystem.initialize();
+  climatePathTracker.initialize();
+  achievementSystem.initialize();
+  
   // Sauvegarder le nouvel état
   saveState(state);
   console.log("Jeu réinitialisé à l'état:", JSON.stringify(state));
   
+  // Mettre à jour l'interface
+  updateGameInterface();
+  
   return true;
 }
 
-export function initGame(){
+export function initGame() {
   console.log("Initialisation du jeu avec l'état:", JSON.stringify(state));
   
   // S'assurer que toutes les propriétés sont définies
@@ -286,7 +499,104 @@ export function initGame(){
   // Initialiser previousState
   previousState = JSON.parse(JSON.stringify(state));
   
+  // Initialiser les systèmes
+  setTimeout(() => {
+    // Initialiser les systèmes de jeu avec un léger délai pour s'assurer que le DOM est prêt
+    missionSystem.initialize();
+    narrativeSystem.initialize();
+    climatePathTracker.initialize();
+    achievementSystem.initialize();
+    
+    // Initialiser le système de visualisation
+    if (visualizationSystem) {
+      visualizationSystem.initialize('map');
+    }
+    
+    // Configurer les interfaces
+    setupMissionsInterface();
+    setupClimateDashboard();
+    
+    // Prendre un snapshot initial
+    climatePathTracker.generatePathSnapshot("État initial");
+  }, 100);
+  
   saveState(state);
 }
 
-export {actions};
+// Mettre à jour l'interface du jeu
+function updateGameInterface() {
+  // Cette fonction est appelée après des changements d'état importants
+  // et coordonne la mise à jour de tous les composants d'interface
+  
+  // Mettre à jour l'interface standard (HUD, investissements, etc.)
+  updateHUD();
+  updateInvestments();
+  
+  // Mettre à jour la visualisation
+  if (visualizationSystem) {
+    visualizationSystem.updateVisualization();
+  }
+  
+  // Mettre à jour le tableau de bord
+  updateDashboard();
+}
+
+// Fonctions importées de l'ancien code pour la compatibilité
+function updateHUD() {
+  // Note: Cette fonction serait idéalement importée depuis interface.js
+  // Ici on se contente d'une version simplifiée pour la compatibilité
+  
+  const yearEl = document.getElementById('year');
+  const budgetEl = document.getElementById('budget');
+  const tempEl = document.getElementById('temp');
+  const co2El = document.getElementById('co2');
+  const seaEl = document.getElementById('sea');
+  
+  if (yearEl) yearEl.textContent = `Année: ${state.year}`;
+  if (budgetEl) budgetEl.textContent = `Budget: ${state.budget}`;
+  if (tempEl) tempEl.textContent = `ΔT: ${state.temp.toFixed(2)}°C`;
+  if (co2El) co2El.textContent = `CO₂: ${state.co2.toFixed(0)} ppm`;
+  if (seaEl) seaEl.textContent = `Niveau mer: ${state.sea.toFixed(2)} m`;
+  
+  // Mettre à jour l'état des boutons d'action
+  document.querySelectorAll('.action-btn').forEach(btn => {
+    const actionId = btn.dataset.actionId;
+    const action = actions.find(a => a.id === actionId);
+    if (action) {
+      btn.disabled = state.budget < action.cost;
+    }
+  });
+}
+
+function updateInvestments() {
+  // Note: Cette fonction serait idéalement importée depuis interface.js
+  // Ici on se contente d'une version simplifiée pour la compatibilité
+  
+  const investmentsDiv = document.getElementById('investments');
+  const noInvestmentsEl = document.getElementById('no-investments');
+  
+  if (!investmentsDiv || !noInvestmentsEl) return;
+  
+  // Vider le contenu actuel
+  Array.from(investmentsDiv.children)
+    .filter(el => el.id !== 'no-investments')
+    .forEach(el => el.remove());
+  
+  // Afficher/masquer le message "aucun investissement"
+  if (activeInvestments.length === 0) {
+    noInvestmentsEl.style.display = 'block';
+    return;
+  } else {
+    noInvestmentsEl.style.display = 'none';
+  }
+  
+  // Ajouter chaque investissement actif
+  activeInvestments.forEach(inv => {
+    const div = document.createElement('div');
+    div.className = 'investment-item';
+    div.innerHTML = `<strong>${inv.name}</strong>: +${inv.return} budget/tour (${inv.remainingYears} tours restants)`;
+    investmentsDiv.appendChild(div);
+  });
+}
+
+export { actions };

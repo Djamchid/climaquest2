@@ -76,6 +76,7 @@ const budgetEl = document.getElementById('budget');
 const tempEl = document.getElementById('temp');
 const co2El  = document.getElementById('co2');
 const seaEl  = document.getElementById('sea');
+const biodiversityEl = document.getElementById('biodiversity'); // Ajout de la référence pour la biodiversité
 const mapCanvas = document.getElementById('map');
 const ctx = mapCanvas.getContext('2d');
 
@@ -85,8 +86,6 @@ const resetBtn = document.getElementById('resetBtn');
 const investmentsDiv = document.getElementById('investments');
 const noInvestmentsEl = document.getElementById('no-investments');
 const categoryTabsDiv = document.getElementById('categoryTabs');
-const eventNotification = document.getElementById('eventNotification');
-const eventDescription = document.getElementById('eventDescription');
 
 // Définir les catégories et leurs couleurs pour les onglets
 const categories = [
@@ -334,6 +333,15 @@ document.addEventListener('keydown', function(e) {
 });
 
 function showEventNotification(text) {
+  // Vérifier que les éléments existent avant de les utiliser
+  const eventDescription = document.getElementById('eventDescription');
+  const eventNotification = document.getElementById('eventNotification');
+  
+  if (!eventDescription || !eventNotification) {
+    console.error("Éléments d'événement non trouvés dans le DOM");
+    return;
+  }
+  
   // Mettre à jour le texte de la notification
   eventDescription.textContent = text;
   
@@ -537,11 +545,16 @@ export function renderMap(){
 function updateHUD(){
   try {
     console.log("Mise à jour du HUD avec l'état:", JSON.stringify(state));
-    yearEl.textContent = `Année: ${state.year}`;
+    yearEl.innerHTML = `Année: <strong>${state.year}</strong>`; // Mise à jour pour meilleure visibilité
     budgetEl.textContent = `Budget: ${state.budget}`;
     tempEl.textContent = `ΔT: ${state.temp.toFixed(2)}°C`;
     co2El.textContent  = `CO₂: ${state.co2.toFixed(0)} ppm`;
     seaEl.textContent  = `Niveau mer: ${state.sea.toFixed(2)} m`;
+    
+    // Ajout de l'affichage pour la biodiversité
+    if (biodiversityEl) {
+      biodiversityEl.textContent = `Biodiversité: ${state.biodiversity.toFixed(1)}`;
+    }
     
     // Mettre à jour l'état des boutons en fonction du budget
     document.querySelectorAll('.action-btn').forEach(btn => {
@@ -601,5 +614,18 @@ function updateHUDAppearance() {
   } else {
     seaEl.style.color = 'white';
     seaEl.style.fontWeight = 'normal';
+  }
+  
+  // Biodiversité
+  if (biodiversityEl) {
+    if (state.biodiversity < -0.5) {
+      biodiversityEl.style.color = '#ff6b6b';
+      biodiversityEl.style.fontWeight = 'bold';
+    } else if (state.biodiversity < 0) {
+      biodiversityEl.style.color = '#ffa502';
+    } else {
+      biodiversityEl.style.color = 'white';
+      biodiversityEl.style.fontWeight = 'normal';
+    }
   }
 }

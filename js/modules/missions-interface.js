@@ -474,32 +474,6 @@ function renderCompletedMissions(missionSystem) {
   }
 }
 
-/**
- * Affiche une notification à l'utilisateur
- * @param {string} title - Titre de la notification
- * @param {string} message - Message de la notification
- * @param {string} type - Type de notification ('success', 'warning', 'error', 'info')
- */
-// 1. Fix missions-interface.js exports
-// Open js/modules/missions-interface.js and modify the export statement at the end:
-
-// Original export statement:
-export {
-  initMissionsInterface,
-  setupMissionsInterface, 
-  updateMissionsInterface,
-  showMissionDetails
-};
-
-// Change to this new export statement:
-export {
-  initMissionsInterface,
-  setupMissionsInterface,
-  updateMissionsInterface as updateAfterTurn, // Alias for updateAfterTurn
-  showMissionDetails,
-  showNotification
-};
-
 // 2. Modify the showNotification function to accept either separate parameters or an object
 
 // Find the showNotification function in missions-interface.js (around line 395)

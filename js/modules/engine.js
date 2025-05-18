@@ -1,9 +1,11 @@
+// engine.js - Complete revised file
+
 // Moteur de jeu amélioré pour ClimaQuest
 import { DEFAULT_STATE } from '../data/climate-model.js';
 import actions from '../data/actions.js';
 import events from '../data/events.js';
 import { saveState, loadState } from './storage.js';
-import { setupMissionsInterface, updateAfterTurn, showNotification } from './missions-interface.js';
+import { setupMissionsInterface, updateAfterTurn, showNotification, initMissionsInterface } from './missions-interface.js';
 import { missionSystem } from './missions.js';
 import { narrativeSystem } from './narrative-events.js';
 import { achievementSystem } from './achievements.js';
@@ -16,6 +18,20 @@ export let state = loadState() || JSON.parse(JSON.stringify(DEFAULT_STATE));
 export let yearIndex = 0;
 export let activeInvestments = []; // Pour suivre les investissements actifs
 export let previousState = {}; // Pour le suivi des tendances
+
+// Variable pour suivre l'état d'initialisation
+export let initializationComplete = false;
+export let initializationProgress = {
+  total: 5, // Nombre total de systèmes à initialiser
+  completed: 0, // Nombre de systèmes initialisés
+  systems: {
+    missions: false,
+    narrative: false,
+    tracker: false,
+    achievements: false,
+    visualization: false
+  }
+};
 
 // Sécuriser l'état pour s'assurer qu'il contient tous les champs nécessaires
 function ensureStateFields() {
@@ -369,6 +385,17 @@ function naturalEmissionsIncrease() {
 }
 
 export function nextTurn() {
+  // Vérifier si l'initialisation est complète
+  if (!initializationComplete) {
+    showNotification({
+      title: "Système en cours d'initialisation",
+      message: "Veuillez patienter pendant l'initialisation du système",
+      type: "warning",
+      duration: 3000
+    });
+    return false;
+  }
+
   console.log("Passage au tour suivant");
   
   // Vérifier si un événement narratif est actif
@@ -490,6 +517,54 @@ export function resetGame() {
   return true;
 }
 
+// Mettre à jour la progression d'initialisation
+function updateInitProgress(system) {
+  initializationProgress.systems[system] = true;
+  initializationProgress.completed++;
+  
+  // Mettre à jour l'indicateur de chargement
+  const progressPercent = (initializationProgress.completed / initializationProgress.total) * 100;
+  updateLoadingProgress(progressPercent);
+  
+  // Vérifier si tous les systèmes sont initialisés
+  if (initializationProgress.completed >= initializationProgress.total) {
+    console.log("Initialisation de tous les systèmes terminée");
+    initializationComplete = true;
+    
+    // Masquer l'écran de chargement après un court délai
+    setTimeout(() => {
+      hideLoadingScreen();
+    }, 500);
+  }
+}
+
+// Mettre à jour l'affichage de progression du chargement
+function updateLoadingProgress(percent) {
+  const loadingText = document.querySelector('.loading-progress-text');
+  const progressBar = document.querySelector('.loading-progress-bar-inner');
+  
+  if (loadingText) {
+    loadingText.textContent = `${Math.round(percent)}%`;
+  }
+  
+  if (progressBar) {
+    progressBar.style.width = `${percent}%`;
+  }
+}
+
+// Masquer l'écran de chargement
+function hideLoadingScreen() {
+  const loadingScreen = document.getElementById('loading-screen');
+  if (loadingScreen) {
+    loadingScreen.classList.add('fade-out');
+    
+    // Retirer complètement après l'animation
+    setTimeout(() => {
+      loadingScreen.style.display = 'none';
+    }, 500);
+  }
+}
+
 export function initGame() {
   console.log("Initialisation du jeu avec l'état:", JSON.stringify(state));
   
@@ -499,28 +574,165 @@ export function initGame() {
   // Initialiser previousState
   previousState = JSON.parse(JSON.stringify(state));
   
-  // Initialiser les systèmes
-  setTimeout(() => {
-    // Initialiser les systèmes de jeu avec un léger délai pour s'assurer que le DOM est prêt
-    missionSystem.initialize();
-    narrativeSystem.initialize();
-    climatePathTracker.initialize();
-    achievementSystem.initialize();
-    
-    // Initialiser le système de visualisation
-    if (visualizationSystem) {
-      visualizationSystem.initialize('map');
-    }
-    
-    // Configurer les interfaces
-    setupMissionsInterface();
-    setupClimateDashboard();
-    
-    // Prendre un snapshot initial
-    climatePathTracker.generatePathSnapshot("État initial");
-  }, 100);
+  // Initialiser les systèmes avec des Promises
+  initializeAllSystems()
+    .then(() => {
+      console.log("Tous les systèmes sont initialisés avec succès");
+      initializationComplete = true;
+      
+      // Prendre un snapshot initial
+      climatePathTracker.generatePathSnapshot("État initial");
+      
+      // Masquer l'écran de chargement
+      hideLoadingScreen();
+    })
+    .catch(error => {
+      console.error("Erreur pendant l'initialisation des systèmes:", error);
+      
+      // Afficher une erreur à l'utilisateur
+      showNotification({
+        title: "Erreur d'initialisation",
+        message: "Une erreur est survenue lors de l'initialisation du jeu. Veuillez recharger la page.",
+        type: "error",
+        duration: 10000
+      });
+    });
   
   saveState(state);
+}
+
+// Initialiser tous les systèmes en parallèle
+function initializeAllSystems() {
+  // Afficher l'écran de chargement
+  showLoadingScreen();
+  
+  // Créer un tableau de Promises pour tous les systèmes
+  const promises = [
+    // Initialiser le système de missions
+    new Promise((resolve, reject) => {
+      try {
+        missionSystem.initialize();
+        updateInitProgress('missions');
+        console.log("Système de missions initialisé");
+        resolve();
+      } catch (error) {
+        console.error("Erreur lors de l'initialisation du système de missions:", error);
+        reject(error);
+      }
+    }),
+    
+    // Initialiser le système narratif
+    new Promise((resolve, reject) => {
+      try {
+        narrativeSystem.initialize();
+        updateInitProgress('narrative');
+        console.log("Système narratif initialisé");
+        resolve();
+      } catch (error) {
+        console.error("Erreur lors de l'initialisation du système narratif:", error);
+        reject(error);
+      }
+    }),
+    
+    // Initialiser le système de suivi du parcours
+    new Promise((resolve, reject) => {
+      try {
+        climatePathTracker.initialize();
+        updateInitProgress('tracker');
+        console.log("Système de suivi du parcours climatique initialisé");
+        resolve();
+      } catch (error) {
+        console.error("Erreur lors de l'initialisation du système de suivi:", error);
+        reject(error);
+      }
+    }),
+    
+    // Initialiser le système de badges
+    new Promise((resolve, reject) => {
+      try {
+        achievementSystem.initialize();
+        updateInitProgress('achievements');
+        console.log("Système de badges et récompenses initialisé");
+        resolve();
+      } catch (error) {
+        console.error("Erreur lors de l'initialisation du système de badges:", error);
+        reject(error);
+      }
+    }),
+    
+    // Initialiser le système de visualisation
+    new Promise((resolve, reject) => {
+      try {
+        if (visualizationSystem) {
+          visualizationSystem.initialize('map');
+          updateInitProgress('visualization');
+          console.log("Système de visualisation initialisé");
+        } else {
+          updateInitProgress('visualization'); // Marquer comme complété même si non disponible
+          console.log("Système de visualisation non disponible");
+        }
+        resolve();
+      } catch (error) {
+        console.error("Erreur lors de l'initialisation du système de visualisation:", error);
+        updateInitProgress('visualization'); // Marquer comme complété malgré l'erreur
+        resolve(); // Ne pas rejeter pour permettre au jeu de continuer
+      }
+    })
+  ];
+  
+  // Une fois tous les systèmes initialisés, configurer les interfaces
+  return Promise.all(promises)
+    .then(() => {
+      // Initialiser les interfaces
+      initMissionsInterface(missionSystem);
+      setupMissionsInterface();
+      setupClimateDashboard();
+      
+      // Mettre à jour les interfaces initiales
+      updateHUD();
+      updateInvestments();
+      
+      return "Initialisation complète";
+    });
+}
+
+// Afficher l'écran de chargement
+function showLoadingScreen() {
+  // Vérifier si l'écran de chargement existe déjà
+  let loadingScreen = document.getElementById('loading-screen');
+  
+  if (!loadingScreen) {
+    // Créer l'écran de chargement s'il n'existe pas
+    loadingScreen = document.createElement('div');
+    loadingScreen.id = 'loading-screen';
+    loadingScreen.innerHTML = `
+      <div class="loading-content">
+        <h2>ClimaQuest</h2>
+        <div class="loading-spinner"></div>
+        <p>Initialisation des systèmes du Conseil Climatique...</p>
+        <div class="loading-progress-bar">
+          <div class="loading-progress-bar-inner" style="width: 0%"></div>
+        </div>
+        <div class="loading-progress-text">0%</div>
+      </div>
+    `;
+    
+    document.body.appendChild(loadingScreen);
+  } else {
+    // Réinitialiser si déjà présent
+    loadingScreen.style.display = 'flex';
+    loadingScreen.classList.remove('fade-out');
+    
+    const progressBar = loadingScreen.querySelector('.loading-progress-bar-inner');
+    if (progressBar) {
+      progressBar.style.width = '0%';
+    }
+    
+    const progressText = loadingScreen.querySelector('.loading-progress-text');
+    if (progressText) {
+      progressText.textContent = '0%';
+    }
+  }
 }
 
 // Mettre à jour l'interface du jeu
@@ -551,12 +763,14 @@ function updateHUD() {
   const tempEl = document.getElementById('temp');
   const co2El = document.getElementById('co2');
   const seaEl = document.getElementById('sea');
+  const biodiversityEl = document.getElementById('biodiversity');
   
-  if (yearEl) yearEl.textContent = `Année: ${state.year}`;
+  if (yearEl) yearEl.innerHTML = `Année: <strong>${state.year}</strong>`;
   if (budgetEl) budgetEl.textContent = `Budget: ${state.budget}`;
   if (tempEl) tempEl.textContent = `ΔT: ${state.temp.toFixed(2)}°C`;
   if (co2El) co2El.textContent = `CO₂: ${state.co2.toFixed(0)} ppm`;
   if (seaEl) seaEl.textContent = `Niveau mer: ${state.sea.toFixed(2)} m`;
+  if (biodiversityEl) biodiversityEl.textContent = `Biodiversité: ${state.biodiversity.toFixed(1)}`;
   
   // Mettre à jour l'état des boutons d'action
   document.querySelectorAll('.action-btn').forEach(btn => {

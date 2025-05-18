@@ -242,7 +242,7 @@ function renderMissions() {
   
   switch (currentMissionTab) {
     case 'active':
-      missions = missionSystem.getCurrentMissions();
+      missions = missionSystem.currentMissions();
       break;
     case 'available':
       missions = missionSystem.getUnlockedMissions();

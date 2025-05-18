@@ -1,715 +1,559 @@
-// Interface pour les missions et événements narratifs
-import { state, actions, nextTurn, applyAction } from './engine.js';
-import { missionSystem } from './missions.js';
-import { narrativeSystem, characters } from './narrative-events.js';
-import { achievementSystem } from './achievements.js';
+/**
+ * missions-interface.js
+ * Gère l'interface utilisateur pour le système de missions de ClimaQuest
+ */
 
-// Éléments DOM pour l'interface des missions
-let missionsPanel;
-let missionsContent;
-let missionTabs;
-let currentMissionTab = 'active';
+// Référence au système de mission (injecté depuis engine.js)
+let missionSystem = null;
 
-// Éléments DOM pour les événements narratifs
-let narrativeOverlay;
-let narrativeContainer;
-
-// Éléments DOM pour les notifications
-const notificationQueue = [];
-let currentNotification = null;
-let notificationTimer = null;
-
-// Initialiser l'interface des missions et narratives
-export function setupMissionsInterface() {
-  // Créer le panneau de missions s'il n'existe pas
-  if (!document.getElementById('missions-panel')) {
-    createMissionsPanel();
-  }
-  
-  // Créer l'overlay narratif s'il n'existe pas
-  if (!document.getElementById('narrative-overlay')) {
-    createNarrativeOverlay();
-  }
-  
-  // Récupérer les références aux éléments DOM
-  missionsPanel = document.getElementById('missions-panel');
-  missionsContent = document.getElementById('missions-content');
-  missionTabs = document.querySelectorAll('.mission-tab');
-  narrativeOverlay = document.getElementById('narrative-overlay');
-  narrativeContainer = document.getElementById('narrative-container');
-  
-  // Ajouter les écouteurs d'événements pour les onglets de mission
-  missionTabs.forEach(tab => {
-    tab.addEventListener('click', () => {
-      // Mettre à jour l'onglet actif
-      missionTabs.forEach(t => t.classList.remove('active'));
-      tab.classList.add('active');
-      
-      // Mettre à jour le contenu en fonction de l'onglet sélectionné
-      currentMissionTab = tab.dataset.tab;
-      renderMissions();
-    });
-  });
-  
-  // Initialiser le système de missions
-  missionSystem.initialize();
-  
-  // Initialiser le système narratif
-  narrativeSystem.initialize();
-  
-  // Rendre les missions initiales
-  renderMissions();
-  
-  console.log("Interface des missions et événements narratifs initialisée");
-}
-
-// Créer le panneau de missions
-function createMissionsPanel() {
-  const missionsHTML = `
-    <div id="missions-panel">
-      <div class="missions-header">
-        <h2>Missions</h2>
-        <div class="missions-era-indicator">
-          <div class="missions-era-icon">1</div>
-          <span id="current-era-name">Éveil climatique (2025-2035)</span>
-        </div>
-      </div>
-      <div class="missions-tabs">
-        <div class="mission-tab active" data-tab="active">
-          En cours
-          <div class="mission-tab-counter" id="active-missions-count">0</div>
-        </div>
-        <div class="mission-tab" data-tab="available">
-          Disponibles
-          <div class="mission-tab-counter" id="available-missions-count">0</div>
-        </div>
-        <div class="mission-tab" data-tab="completed">
-          Complétées
-          <div class="mission-tab-counter" id="completed-missions-count">0</div>
-        </div>
-      </div>
-      <div id="missions-content" class="missions-content">
-        <!-- Le contenu des missions sera ajouté ici dynamiquement -->
-      </div>
-    </div>
-  `;
-  
-  // Trouver un emplacement approprié dans le DOM
-  const container = document.querySelector('.container');
-  
-  // Insérer après le HUD
-  const hud = document.getElementById('hud');
-  if (hud && container) {
-    const missionsPanelElement = document.createElement('div');
-    missionsPanelElement.innerHTML = missionsHTML;
-    container.insertBefore(missionsPanelElement.firstElementChild, hud.nextSibling);
-  } else {
-    // Fallback: ajouter à la fin du conteneur
-    container.innerHTML += missionsHTML;
-  }
-}
-
-// Créer l'overlay pour les événements narratifs
-function createNarrativeOverlay() {
-  const narrativeHTML = `
-    <div id="narrative-overlay" class="narrative-overlay">
-      <div id="narrative-container" class="narrative-container">
-        <div class="narrative-header">
-          <h2 class="narrative-title">Titre de l'événement</h2>
-          <div class="narrative-year">2025</div>
-        </div>
-        <div class="narrative-content">
-          <div class="narrative-description">
-            Description de l'événement narratif...
-          </div>
-          <div class="narrative-choices">
-            <!-- Les choix seront ajoutés ici dynamiquement -->
-          </div>
-          <div id="narrative-result" class="narrative-result">
-            <div class="narrative-result-title">Résultat</div>
-            <div id="narrative-result-text" class="narrative-result-text">
-              Le résultat de votre choix...
-            </div>
-          </div>
-        </div>
-        <div class="narrative-footer">
-          <div class="narrative-effects">
-            <!-- Les effets du choix seront affichés ici -->
-          </div>
-          <button id="narrative-skip" class="narrative-skip">Passer</button>
-          <button id="narrative-continue" class="narrative-continue">Continuer</button>
-        </div>
-      </div>
-    </div>
-  `;
-  
-  // Ajouter à la fin du body
-  const narrativeElement = document.createElement('div');
-  narrativeElement.innerHTML = narrativeHTML;
-  document.body.appendChild(narrativeElement.firstElementChild);
-  
-  // Ajouter les écouteurs d'événements
-  setTimeout(() => {
-    const skipButton = document.getElementById('narrative-skip');
-    const continueButton = document.getElementById('narrative-continue');
-    
-    skipButton.addEventListener('click', () => {
-      closeNarrativeEvent();
-    });
-    
-    continueButton.addEventListener('click', () => {
-      closeNarrativeEvent();
-    });
-  }, 0);
-}
-
-// Mettre à jour l'interface après chaque tour
-export function updateAfterTurn() {
-  // Vérifier les missions
-  const completedMissions = missionSystem.updateMissions();
-  
-  // Si des missions ont été complétées, afficher des notifications
-  completedMissions.forEach(missionId => {
-    const mission = missionSystem.getMissionById(missionId);
-    showNotification({
-      title: `Mission accomplie : ${mission.title}`,
-      message: `Félicitations ! Vous avez reçu : ${mission.reward.description}`,
-      type: "mission-completed"
-    });
-  });
-  
-  // Vérifier les nouveaux événements narratifs
-  const event = narrativeSystem.checkEventTriggers();
-  if (event) {
-    // Planifier l'affichage de l'événement narratif (après les notifications)
-    setTimeout(() => {
-      showNarrativeEvent(event);
-    }, notificationQueue.length * 4000 + 500);
-  }
-  
-  // Vérifier les badges et réalisations
-  const newBadges = achievementSystem.checkAchievements();
-  if (newBadges) {
-    // Afficher des notifications pour les nouveaux badges
-    showNotification({
-      title: `Nouveau trophée débloqué !`,
-      message: `Vous avez obtenu le trophée "${newBadges.title}"`,
-      type: "achievement"
-    });
-  }
-  
-  // Mettre à jour l'affichage des missions
-  renderMissions();
-  
-  // Mettre à jour l'ère active
-  updateEraDisplay();
-}
-
-// Mettre à jour l'affichage de l'ère active
-function updateEraDisplay() {
-  const eraName = document.getElementById('current-era-name');
-  const eraIcon = document.querySelector('.missions-era-icon');
-  
-  if (eraName && eraIcon) {
-    // Obtenir l'ère active depuis le système de missions
-    const activeEra = missionSystem.activeEra;
-    const era = missionSystem.getEraById(activeEra);
-    
-    if (era) {
-      eraName.textContent = `${era.name} (${era.yearStart}-${era.yearEnd})`;
-      
-      // Mettre à jour l'icône avec le numéro d'ère
-      const eraNumber = era.id.match(/era-(\d+)/)[1] || '1';
-      eraIcon.textContent = eraNumber;
-      
-      // Mettre à jour la couleur en fonction de l'ère
-      const eraColor = `var(--era-${eraNumber}-color)`;
-      document.querySelector('.missions-header').style.background = 
-        `linear-gradient(90deg, ${eraColor}, ${eraColor}aa)`;
-    }
-  }
-}
-
-// Rendre les missions dans l'interface
-function renderMissions() {
-  if (!missionsContent) return;
-  
-  // Vider le contenu
-  missionsContent.innerHTML = '';
-  
-  // Récupérer les missions selon l'onglet actif
-  let missions = [];
-  
-  switch (currentMissionTab) {
-    case 'active':
-      missions = missionSystem.currentMissions();
-      break;
-    case 'available':
-      missions = missionSystem.getUnlockedMissions();
-      break;
-    case 'completed':
-      missions = missionSystem.getCompletedMissions();
-      break;
-  }
-  
-  // Mettre à jour les compteurs
-  updateMissionCounters();
-  
-  // Si aucune mission dans cette catégorie
-  if (missions.length === 0) {
-    missionsContent.innerHTML = `
-      <div style="text-align: center; padding: 2rem; color: var(--medium);">
-        Aucune mission ${
-          currentMissionTab === 'active' ? 'active' : 
-          currentMissionTab === 'available' ? 'disponible' : 'complétée'
-        } pour le moment.
-      </div>
-    `;
+/**
+ * Initialise l'interface des missions
+ * @param {MissionSystem} missionSys - Le système de mission du jeu
+ */
+function initMissionsInterface(missionSys) {
+  if (!missionSys) {
+    console.error("Système de mission non fourni à l'initialisation de l'interface");
     return;
   }
   
-  // Rendre chaque mission
-  missions.forEach(mission => {
-    const missionElement = createMissionCard(mission);
-    missionsContent.appendChild(missionElement);
-  });
+  missionSystem = missionSys;
+  console.log("Interface des missions initialisée");
+  
+  // Configurer les écouteurs d'événements globaux
+  setupEventListeners();
 }
 
-// Créer une carte de mission
-function createMissionCard(mission) {
-  // Créer l'élément de la carte
-  const missionCard = document.createElement('div');
-  missionCard.className = 'mission-card';
-  
-  // Déterminer le statut et le style
-  let statusText, statusClass;
-  let canActivate = false;
-  
-  switch (mission.status) {
-    case 'active':
-      statusText = 'En cours';
-      statusClass = 'active';
-      break;
-    case 'unlocked':
-      statusText = 'Disponible';
-      statusClass = 'unlocked';
-      canActivate = true;
-      break;
-    case 'completed':
-      statusText = 'Terminée';
-      statusClass = 'completed';
-      break;
-    default:
-      statusText = 'Disponible';
-      statusClass = 'unlocked';
-      canActivate = true;
-  }
-  
-  // Calculer la progression pour les missions actives
-  let progressHTML = '';
-  let objectivesHTML = '';
-  
-  if (mission.status === 'active') {
-    const progress = missionSystem.getMissionProgress(mission.id);
+/**
+ * Prépare l'interface des missions avec les éléments DOM nécessaires
+ */
+function setupMissionsInterface() {
+  try {
+    console.log("Configuration de l'interface des missions...");
     
-    progressHTML = `
-      <div class="mission-progress-bar">
-        <div class="mission-progress-bar-inner" style="width: ${progress.progress}%"></div>
-      </div>
-    `;
-    
-    // Générer la liste des objectifs avec leur état
-    objectivesHTML = `
-      <h4>Objectifs :</h4>
-      <ul class="mission-objectives">
-        ${mission.objectives.map(obj => {
-          const objectiveStatus = progress.objectives.find(o => o.id === obj.id);
-          const isCompleted = objectiveStatus && objectiveStatus.completed;
-          
-          return `
-            <li class="mission-objective ${isCompleted ? 'completed' : ''}">
-              <div class="mission-objective-icon ${isCompleted ? 'completed' : 'incomplete'}">
-                ${isCompleted ? '✓' : '•'}
-              </div>
-              <div class="mission-objective-text">${obj.description}</div>
-              <div class="mission-objective-progress">
-                ${isCompleted ? 'Complété' : 
-                  objectiveStatus ? `${objectiveStatus.currentValue.toFixed(1)} / ${obj.target.replace(/[<>=!]+/, '')}` : 'En cours'}
-              </div>
-            </li>
-          `;
-        }).join('')}
-      </ul>
-    `;
-  }
-  
-  // Construire la carte de mission
-  missionCard.innerHTML = `
-    <div class="mission-card-header">
-      <h3 class="mission-card-title">${mission.title}</h3>
-      <div class="mission-card-status ${statusClass}">${statusText}</div>
-    </div>
-    <div class="mission-card-body">
-      <div class="mission-description">${mission.description}</div>
-      ${objectivesHTML}
-      ${progressHTML}
-      <div class="mission-reward">
-        <div class="mission-reward-title">Récompense :</div>
-        <div class="mission-reward-description">${mission.reward.description}</div>
-      </div>
-    </div>
-    <div class="mission-card-actions">
-      <button class="mission-btn mission-btn-details">Détails</button>
-      ${canActivate ? `<button class="mission-btn mission-btn-activate">Activer</button>` : ''}
-    </div>
-  `;
-  
-  // Ajouter des écouteurs d'événements
-  setTimeout(() => {
-    const activateBtn = missionCard.querySelector('.mission-btn-activate');
-    const detailsBtn = missionCard.querySelector('.mission-btn-details');
-    
-    if (activateBtn) {
-      activateBtn.addEventListener('click', () => {
-        missionSystem.activateMission(mission.id);
-        renderMissions();
-      });
+    // Vérifier si les éléments nécessaires existent
+    const missionsPanelElement = document.getElementById('missions-panel');
+    if (!missionsPanelElement) {
+      console.error("Panneau des missions non trouvé dans le DOM");
+      return;
     }
     
-    if (detailsBtn) {
-      detailsBtn.addEventListener('click', () => {
-        // Afficher les détails de la mission (pourrait être une modale ou un panneau extensible)
-        alert(`Détails de la mission "${mission.title}":\n\n${mission.description}`);
-      });
-    }
-  }, 0);
-  
-  return missionCard;
-}
-
-// Mettre à jour les compteurs de missions
-function updateMissionCounters() {
-  const activeMissionsCount = document.getElementById('active-missions-count');
-  const availableMissionsCount = document.getElementById('available-missions-count');
-  const completedMissionsCount = document.getElementById('completed-missions-count');
-  
-  if (activeMissionsCount) {
-    activeMissionsCount.textContent = missionSystem.currentMissions.length;
-  }
-  
-  if (availableMissionsCount) {
-    availableMissionsCount.textContent = missionSystem.unlockedMissions.length;
-  }
-  
-  if (completedMissionsCount) {
-    completedMissionsCount.textContent = missionSystem.completedMissions.length;
-  }
-}
-
-// Afficher un événement narratif
-function showNarrativeEvent(event) {
-  if (!narrativeOverlay || !narrativeContainer) return;
-  
-  // Mettre à jour le contenu de l'événement
-  const titleElement = narrativeContainer.querySelector('.narrative-title');
-  const yearElement = narrativeContainer.querySelector('.narrative-year');
-  const descriptionElement = narrativeContainer.querySelector('.narrative-description');
-  const choicesElement = narrativeContainer.querySelector('.narrative-choices');
-  const resultElement = document.getElementById('narrative-result');
-  const continueButton = document.getElementById('narrative-continue');
-  const skipButton = document.getElementById('narrative-skip');
-  
-  // Réinitialiser l'état
-  resultElement.classList.remove('visible');
-  continueButton.classList.remove('visible');
-  skipButton.style.display = 'block';
-  
-  // Définir le contenu
-  titleElement.textContent = event.title;
-  yearElement.textContent = state.year;
-  descriptionElement.textContent = event.description;
-  
-  // Générer les choix
-  choicesElement.innerHTML = '';
-  
-  event.choices.forEach(choice => {
-    const choiceElement = document.createElement('div');
-    choiceElement.className = 'narrative-choice';
-    choiceElement.dataset.choiceId = choice.id;
-    
-    // Récupérer le personnage conseiller
-    const character = characters[choice.character];
-    
-    choiceElement.innerHTML = `
-      <div class="narrative-choice-text">${choice.text}</div>
-      <div class="narrative-choice-advisor">
-        <div class="advisor-avatar ${choice.character}">${character ? character.name.charAt(0) : '?'}</div>
-        <div class="advisor-content">
-          <div class="advisor-name">${character ? character.name : 'Conseiller inconnu'}</div>
-          <div class="advisor-advice">"${choice.advice}"</div>
+    // Créer la structure de base si elle n'existe pas déjà
+    if (!document.getElementById('active-missions-container')) {
+      missionsPanelElement.innerHTML = `
+        <div class="missions-header">
+          <h2>Missions</h2>
+          <div class="missions-tabs">
+            <button class="mission-tab active" data-tab="active">Actives</button>
+            <button class="mission-tab" data-tab="available">Disponibles</button>
+            <button class="mission-tab" data-tab="completed">Complétées</button>
+          </div>
         </div>
-      </div>
-    `;
-    
-    // Ajouter un écouteur d'événement pour le choix
-    choiceElement.addEventListener('click', () => {
-      selectNarrativeChoice(event, choice);
-    });
-    
-    choicesElement.appendChild(choiceElement);
-  });
-  
-  // Afficher l'overlay
-  narrativeOverlay.classList.add('active');
-  
-  // Définir l'événement actif dans le système narratif
-  narrativeSystem.activeEvent = event;
-}
-
-// Sélectionner un choix dans un événement narratif
-function selectNarrativeChoice(event, choice) {
-  // Marquer le choix sélectionné
-  const choices = document.querySelectorAll('.narrative-choice');
-  choices.forEach(c => {
-    c.classList.remove('selected');
-    c.style.pointerEvents = 'none'; // Désactiver les clics sur tous les choix
-  });
-  
-  const selectedChoice = document.querySelector(`.narrative-choice[data-choice-id="${choice.id}"]`);
-  if (selectedChoice) {
-    selectedChoice.classList.add('selected');
-  }
-  
-  // Afficher les effets dans le footer
-  const effectsElement = narrativeContainer.querySelector('.narrative-effects');
-  effectsElement.innerHTML = '';
-  
-  if (choice.effects) {
-    Object.entries(choice.effects).forEach(([key, value]) => {
-      const isPositive = (key === 'co2' && value < 0) || 
-                        (key === 'biodiversity' && value > 0) || 
-                        (key === 'temp' && value < 0) || 
-                        (key === 'sea' && value < 0) ||
-                        (key === 'budget' && value > 0);
-      
-      const effectElement = document.createElement('div');
-      effectElement.className = 'narrative-effect';
-      
-      let icon, label;
-      switch (key) {
-        case 'co2':
-          icon = 'CO₂';
-          label = 'CO₂';
-          break;
-        case 'temp':
-          icon = '🌡️';
-          label = 'Température';
-          break;
-        case 'sea':
-          icon = '🌊';
-          label = 'Niveau de la mer';
-          break;
-        case 'biodiversity':
-          icon = '🌿';
-          label = 'Biodiversité';
-          break;
-        case 'budget':
-          icon = '💰';
-          label = 'Budget';
-          break;
-        default:
-          icon = '📊';
-          label = key;
-      }
-      
-      effectElement.innerHTML = `
-        <div class="effect-icon">${icon}</div>
-        <div class="effect-label">${label}:</div>
-        <div class="effect-value ${isPositive ? 'positive' : 'negative'}">${value > 0 ? '+' : ''}${value}</div>
+        <div class="missions-content">
+          <div id="active-missions-container" class="mission-container active"></div>
+          <div id="available-missions-container" class="mission-container"></div>
+          <div id="completed-missions-container" class="mission-container"></div>
+        </div>
       `;
       
-      effectsElement.appendChild(effectElement);
-    });
-  }
-  
-  // Traiter le choix dans le système narratif
-  narrativeSystem.processChoice(choice.id);
-  
-  // Afficher le résultat
-  const resultElement = document.getElementById('narrative-result');
-  const resultTextElement = document.getElementById('narrative-result-text');
-  
-  if (resultElement && resultTextElement && choice.results) {
-    resultTextElement.textContent = choice.results;
+      // Ajouter les écouteurs pour les onglets
+      document.querySelectorAll('.mission-tab').forEach(tab => {
+        tab.addEventListener('click', function() {
+          switchMissionTab(this.dataset.tab);
+        });
+      });
+    }
     
-    // Afficher le résultat après un court délai pour l'animation
-    setTimeout(() => {
-      resultElement.classList.add('visible');
-      
-      // Afficher le bouton "continuer" et masquer le bouton "passer"
-      const continueButton = document.getElementById('narrative-continue');
-      const skipButton = document.getElementById('narrative-skip');
-      
-      if (continueButton && skipButton) {
-        continueButton.classList.add('visible');
-        skipButton.style.display = 'none';
-      }
-    }, 1000);
+    // Rendre les missions dans leurs conteneurs respectifs
+    renderMissions(missionSystem);
+    renderAvailableMissions(missionSystem);
+    renderCompletedMissions(missionSystem);
+    
+    console.log("Interface des missions configurée avec succès");
+  } catch (error) {
+    console.error("Erreur lors de la configuration de l'interface des missions:", error);
   }
 }
 
-// Fermer l'événement narratif
-function closeNarrativeEvent() {
-  if (!narrativeOverlay) return;
+/**
+ * Change l'onglet des missions actif
+ * @param {string} tabName - Nom de l'onglet à activer ('active', 'available', 'completed')
+ */
+function switchMissionTab(tabName) {
+  // Mettre à jour les onglets
+  document.querySelectorAll('.mission-tab').forEach(tab => {
+    tab.classList.toggle('active', tab.dataset.tab === tabName);
+  });
   
-  // Masquer l'overlay
-  narrativeOverlay.classList.remove('active');
+  // Mettre à jour les conteneurs
+  document.querySelectorAll('.mission-container').forEach(container => {
+    container.classList.remove('active');
+  });
   
-  // Réinitialiser l'événement actif
-  narrativeSystem.activeEvent = null;
-  
-  // Avancer au tour suivant si c'était un événement auto-déclenché
-  nextTurn();
-  
-  // Mettre à jour les missions
-  renderMissions();
-}
-
-// Afficher une notification
-export function showNotification(options = {}) {
-  // Options par défaut
-  const defaultOptions = {
-    title: 'Notification',
-    message: '',
-    type: 'info', // info, mission, event, era-change, tipping-point, achievement
-    duration: 5000, // 5 secondes
-    action: null // Fonction à exécuter si l'utilisateur clique sur l'action
-  };
-  
-  // Fusionner avec les options fournies
-  const notificationOptions = { ...defaultOptions, ...options };
-  
-  // Ajouter à la file d'attente
-  notificationQueue.push(notificationOptions);
-  
-  // Si aucune notification n'est affichée, afficher la suivante
-  if (!currentNotification) {
-    showNextNotification();
+  const targetContainer = document.getElementById(`${tabName}-missions-container`);
+  if (targetContainer) {
+    targetContainer.classList.add('active');
   }
 }
 
-// Afficher la notification suivante dans la file d'attente
-function showNextNotification() {
-  if (notificationQueue.length === 0) {
-    currentNotification = null;
+/**
+ * Configure les écouteurs d'événements pour les interactions avec les missions
+ */
+function setupEventListeners() {
+  // Écouteur global pour gérer les clics sur les boutons des missions
+  document.addEventListener('click', function(event) {
+    // Gestion du bouton de détails
+    if (event.target.classList.contains('mission-details-btn')) {
+      const missionId = event.target.dataset.missionId;
+      showMissionDetails(missionId);
+    }
+    
+    // Gestion du bouton d'acceptation
+    if (event.target.classList.contains('mission-accept-btn')) {
+      const missionId = event.target.dataset.missionId;
+      acceptMission(missionId);
+    }
+    
+    // Gestion du bouton d'abandon
+    if (event.target.classList.contains('mission-abandon-btn')) {
+      const missionId = event.target.dataset.missionId;
+      abandonMission(missionId);
+    }
+  });
+}
+
+/**
+ * Attache des écouteurs d'événements spécifiques aux éléments de mission
+ */
+function attachMissionEventListeners() {
+  // Cette fonction peut être utilisée pour attacher des écouteurs spécifiques
+  // après le rendu des missions, si nécessaire
+}
+
+/**
+ * Affiche les détails d'une mission dans un modal
+ * @param {string} missionId - Identifiant de la mission à afficher
+ */
+function showMissionDetails(missionId) {
+  // Trouver la mission dans l'une des listes
+  let mission = null;
+  if (missionSystem.currentMissions && missionSystem.currentMissions.length) {
+    mission = missionSystem.currentMissions.find(m => m.id === missionId);
+  }
+  
+  if (!mission && missionSystem.availableMissions && missionSystem.availableMissions.length) {
+    mission = missionSystem.availableMissions.find(m => m.id === missionId);
+  }
+  
+  if (!mission && missionSystem.completedMissions && missionSystem.completedMissions.length) {
+    mission = missionSystem.completedMissions.find(m => m.id === missionId);
+  }
+  
+  if (!mission) {
+    console.error(`Mission avec ID ${missionId} non trouvée`);
     return;
   }
   
-  // Récupérer la prochaine notification
-  const notification = notificationQueue.shift();
-  currentNotification = notification;
-  
-  // Créer l'élément de notification s'il n'existe pas
-  let notificationElement = document.getElementById('notification');
-  
-  if (!notificationElement) {
-    notificationElement = document.createElement('div');
-    notificationElement.id = 'notification';
-    notificationElement.className = 'notification';
-    document.body.appendChild(notificationElement);
+  // Créer ou obtenir le modal
+  let missionModal = document.getElementById('mission-details-modal');
+  if (!missionModal) {
+    missionModal = document.createElement('div');
+    missionModal.id = 'mission-details-modal';
+    document.body.appendChild(missionModal);
   }
   
-  // Définir le contenu de la notification
-  notificationElement.innerHTML = `
-    <div class="notification-header notification-${notification.type}">
-      <div>${getNotificationTypeLabel(notification.type)}</div>
-      <button class="notification-close">&times;</button>
-    </div>
-    <div class="notification-body">
-      <div class="notification-title">${notification.title}</div>
-      <div class="notification-message">${notification.message}</div>
-    </div>
-    ${notification.action ? `
-      <div class="notification-actions">
-        <button class="notification-action">${notification.action.label || 'Voir'}</button>
+  // Générer le contenu du modal
+  let objectivesHTML = '';
+  if (mission.objectives && mission.objectives.length) {
+    objectivesHTML = '<ul class="mission-objectives detailed">';
+    for (const obj of mission.objectives) {
+      const statusClass = obj.completed ? 'completed' : 'pending';
+      objectivesHTML += `
+        <li class="mission-objective ${statusClass}">
+          <span class="objective-status-icon"></span>
+          <span class="objective-description">${obj.description}</span>
+          <span class="objective-target">${obj.parameter}: ${obj.target}</span>
+        </li>
+      `;
+    }
+    objectivesHTML += '</ul>';
+  }
+  
+  // Générer HTML pour les récompenses
+  let rewardHTML = '';
+  if (mission.reward) {
+    rewardHTML = `
+      <div class="mission-reward">
+        <h4>Récompense</h4>
+        <p>${mission.reward.description || 'Description non disponible'}</p>
+        ${mission.reward.type === 'unlock' ? `<p>Débloque: ${mission.reward.content}</p>` : ''}
+        ${mission.reward.budgetBonus ? `<p>Bonus de budget: +${mission.reward.budgetBonus}</p>` : ''}
       </div>
-    ` : ''}
+    `;
+  }
+  
+  // Définir le contenu du modal
+  missionModal.innerHTML = `
+    <div class="modal-content mission-modal">
+      <span class="close-modal">&times;</span>
+      <div class="mission-details-header">
+        <h3>${mission.title}</h3>
+        <span class="mission-era-badge">${mission.era || 'Ère actuelle'}</span>
+      </div>
+      <div class="mission-details-body">
+        <p class="mission-description">${mission.description}</p>
+        <div class="mission-objectives-container">
+          <h4>Objectifs</h4>
+          ${objectivesHTML}
+        </div>
+        ${rewardHTML}
+      </div>
+      <div class="mission-details-footer">
+        ${!mission.completed ? `
+          ${!mission.active ? `<button class="btn btn-primary mission-accept-btn" data-mission-id="${mission.id}">Accepter</button>` : ''}
+          ${mission.active ? `<button class="btn btn-warning mission-abandon-btn" data-mission-id="${mission.id}">Abandonner</button>` : ''}
+        ` : '<span class="mission-completed-badge">Mission complétée</span>'}
+        <button class="btn btn-secondary close-details-btn">Fermer</button>
+      </div>
+    </div>
   `;
   
-  // Ajouter les écouteurs d'événements
-  const closeButton = notificationElement.querySelector('.notification-close');
-  const actionButton = notificationElement.querySelector('.notification-action');
-  
-  if (closeButton) {
-    closeButton.addEventListener('click', () => {
-      closeNotification(notificationElement);
+  // Gérer la fermeture du modal
+  const closeButtons = missionModal.querySelectorAll('.close-modal, .close-details-btn');
+  closeButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      missionModal.style.display = 'none';
     });
+  });
+  
+  // Afficher le modal
+  missionModal.style.display = 'block';
+}
+
+/**
+ * Accepte une mission disponible
+ * @param {string} missionId - Identifiant de la mission à accepter
+ */
+function acceptMission(missionId) {
+  if (!missionSystem || typeof missionSystem.acceptMission !== 'function') {
+    console.error("Système de mission invalide ou méthode acceptMission non disponible");
+    return;
   }
   
-  if (actionButton && notification.action) {
-    actionButton.addEventListener('click', () => {
-      notification.action.callback();
-      closeNotification(notificationElement);
+  const success = missionSystem.acceptMission(missionId);
+  if (success) {
+    // Mettre à jour l'interface
+    renderMissions(missionSystem);
+    renderAvailableMissions(missionSystem);
+    
+    // Fermer le modal
+    const modal = document.getElementById('mission-details-modal');
+    if (modal) {
+      modal.style.display = 'none';
+    }
+    
+    // Notification
+    showNotification('Mission acceptée', `Vous avez accepté la mission: ${missionId}`, 'success');
+  } else {
+    showNotification('Impossible d\'accepter la mission', 'Vous avez déjà atteint le nombre maximum de missions actives ou la mission n\'est pas disponible.', 'error');
+  }
+}
+
+/**
+ * Abandonne une mission active
+ * @param {string} missionId - Identifiant de la mission à abandonner
+ */
+function abandonMission(missionId) {
+  // Demander confirmation
+  if (!confirm('Êtes-vous sûr de vouloir abandonner cette mission? Votre progression sera perdue.')) {
+    return;
+  }
+  
+  if (!missionSystem || typeof missionSystem.abandonMission !== 'function') {
+    console.error("Système de mission invalide ou méthode abandonMission non disponible");
+    return;
+  }
+  
+  const success = missionSystem.abandonMission(missionId);
+  if (success) {
+    // Mettre à jour l'interface
+    renderMissions(missionSystem);
+    renderAvailableMissions(missionSystem);
+    
+    // Fermer le modal
+    const modal = document.getElementById('mission-details-modal');
+    if (modal) {
+      modal.style.display = 'none';
+    }
+    
+    // Notification
+    showNotification('Mission abandonnée', `Vous avez abandonné la mission: ${missionId}`, 'warning');
+  } else {
+    showNotification('Impossible d\'abandonner la mission', 'Une erreur s\'est produite.', 'error');
+  }
+}
+
+/**
+ * Affiche les missions actives dans l'interface utilisateur
+ * @param {MissionSystem} missionSystem - Le système de mission
+ */
+function renderMissions(missionSystem) {
+  // Validation du système de mission
+  if (!missionSystem || typeof missionSystem !== 'object') {
+    console.error("Système de mission invalide ou non initialisé");
+    return;
+  }
+
+  // Obtenir les missions actives (maintenant comme propriété, pas comme fonction)
+  const activeMissions = missionSystem.currentMissions || [];
+  const missionsContainer = document.getElementById('active-missions-container');
+  
+  // Vider le conteneur actuel
+  if (missionsContainer) {
+    missionsContainer.innerHTML = '';
+  } else {
+    console.warn("Conteneur de missions actives non trouvé dans le DOM");
+    return;
+  }
+
+  // Vérifier s'il y a des missions actives
+  if (activeMissions.length === 0) {
+    missionsContainer.innerHTML = '<div class="empty-missions-message">Aucune mission active. Consultez les missions disponibles pour en sélectionner une.</div>';
+    return;
+  }
+
+  // Afficher chaque mission active
+  for (const mission of activeMissions) {
+    if (!mission || !mission.id || !mission.title) {
+      console.warn("Mission invalide détectée:", mission);
+      continue;
+    }
+
+    const missionElement = document.createElement('div');
+    missionElement.className = 'mission-card';
+    missionElement.dataset.missionId = mission.id;
+
+    // Vérifier si la mission a des objectifs
+    const objectives = mission.objectives || [];
+    let objectivesHTML = '';
+    
+    if (objectives.length > 0) {
+      objectivesHTML = '<ul class="mission-objectives">';
+      for (const objective of objectives) {
+        if (!objective || !objective.description) continue;
+        
+        // Déterminer si l'objectif est complété
+        const isCompleted = objective.completed ? true : false;
+        const statusClass = isCompleted ? 'completed' : 'pending';
+        
+        objectivesHTML += `
+          <li class="mission-objective ${statusClass}">
+            <span class="objective-status-icon"></span>
+            <span class="objective-description">${objective.description}</span>
+          </li>
+        `;
+      }
+      objectivesHTML += '</ul>';
+    }
+
+    // Créer le contenu HTML de la mission
+    missionElement.innerHTML = `
+      <div class="mission-header">
+        <h3 class="mission-title">${mission.title}</h3>
+        <span class="mission-era">${mission.era || 'Ère actuelle'}</span>
+      </div>
+      <p class="mission-description">${mission.description || 'Description non disponible'}</p>
+      ${objectivesHTML}
+      <div class="mission-footer">
+        <button class="btn mission-details-btn" data-mission-id="${mission.id}">Détails</button>
+        <button class="btn mission-abandon-btn" data-mission-id="${mission.id}">Abandonner</button>
+      </div>
+    `;
+
+    missionsContainer.appendChild(missionElement);
+  }
+
+  // Ajouter des écouteurs d'événements pour les boutons
+  attachMissionEventListeners();
+}
+
+/**
+ * Affiche les missions disponibles dans l'interface utilisateur
+ * @param {MissionSystem} missionSystem - Le système de mission
+ */
+function renderAvailableMissions(missionSystem) {
+  if (!missionSystem || !missionSystem.availableMissions) {
+    console.error("Système de mission invalide ou missions disponibles non définies");
+    return;
+  }
+  
+  const availableMissions = missionSystem.availableMissions || [];
+  const container = document.getElementById('available-missions-container');
+  
+  if (!container) {
+    console.warn("Conteneur de missions disponibles non trouvé");
+    return;
+  }
+  
+  // Vider le conteneur
+  container.innerHTML = '';
+  
+  // Vérifier s'il y a des missions disponibles
+  if (availableMissions.length === 0) {
+    container.innerHTML = '<div class="empty-missions-message">Aucune mission disponible pour le moment. Progressez dans le jeu pour débloquer plus de missions.</div>';
+    return;
+  }
+  
+  // Afficher chaque mission disponible
+  for (const mission of availableMissions) {
+    const missionElement = document.createElement('div');
+    missionElement.className = 'mission-card available';
+    missionElement.dataset.missionId = mission.id;
+    
+    missionElement.innerHTML = `
+      <div class="mission-header">
+        <h3 class="mission-title">${mission.title}</h3>
+        <span class="mission-era">${mission.era || 'Ère actuelle'}</span>
+      </div>
+      <p class="mission-description">${mission.description || 'Description non disponible'}</p>
+      <div class="mission-footer">
+        <button class="btn btn-primary mission-accept-btn" data-mission-id="${mission.id}">Accepter</button>
+        <button class="btn mission-details-btn" data-mission-id="${mission.id}">Détails</button>
+      </div>
+    `;
+    
+    container.appendChild(missionElement);
+  }
+}
+
+/**
+ * Affiche les missions complétées dans l'interface utilisateur
+ * @param {MissionSystem} missionSystem - Le système de mission
+ */
+function renderCompletedMissions(missionSystem) {
+  if (!missionSystem || !missionSystem.completedMissions) {
+    console.error("Système de mission invalide ou missions complétées non définies");
+    return;
+  }
+  
+  const completedMissions = missionSystem.completedMissions || [];
+  const container = document.getElementById('completed-missions-container');
+  
+  if (!container) {
+    console.warn("Conteneur de missions complétées non trouvé");
+    return;
+  }
+  
+  // Vider le conteneur
+  container.innerHTML = '';
+  
+  // Vérifier s'il y a des missions complétées
+  if (completedMissions.length === 0) {
+    container.innerHTML = '<div class="empty-missions-message">Aucune mission complétée pour le moment. Terminez des missions pour les voir apparaître ici.</div>';
+    return;
+  }
+  
+  // Afficher chaque mission complétée
+  for (const mission of completedMissions) {
+    const missionElement = document.createElement('div');
+    missionElement.className = 'mission-card completed';
+    missionElement.dataset.missionId = mission.id;
+    
+    missionElement.innerHTML = `
+      <div class="mission-header">
+        <h3 class="mission-title">${mission.title}</h3>
+        <span class="mission-era">${mission.era || 'Ère passée'}</span>
+        <span class="mission-completed-badge">✓ Complétée</span>
+      </div>
+      <p class="mission-description">${mission.description || 'Description non disponible'}</p>
+      <div class="mission-footer">
+        <button class="btn mission-details-btn" data-mission-id="${mission.id}">Détails</button>
+      </div>
+    `;
+    
+    container.appendChild(missionElement);
+  }
+}
+
+/**
+ * Affiche une notification à l'utilisateur
+ * @param {string} title - Titre de la notification
+ * @param {string} message - Message de la notification
+ * @param {string} type - Type de notification ('success', 'warning', 'error', 'info')
+ */
+function showNotification(title, message, type = 'info') {
+  // Créer l'élément de notification s'il n'existe pas
+  let notification = document.getElementById('game-notification');
+  if (!notification) {
+    notification = document.createElement('div');
+    notification.id = 'game-notification';
+    document.body.appendChild(notification);
+  }
+  
+  // Définir la classe selon le type
+  notification.className = `notification ${type}`;
+  
+  // Définir le contenu
+  notification.innerHTML = `
+    <div class="notification-header">
+      <h4>${title}</h4>
+      <span class="close-notification">&times;</span>
+    </div>
+    <div class="notification-body">
+      <p>${message}</p>
+    </div>
+  `;
+  
+  // Gérer la fermeture de la notification
+  const closeBtn = notification.querySelector('.close-notification');
+  if (closeBtn) {
+    closeBtn.addEventListener('click', () => {
+      notification.classList.add('hiding');
+      setTimeout(() => {
+        notification.style.display = 'none';
+        notification.classList.remove('hiding');
+      }, 300);
     });
   }
   
   // Afficher la notification
-  setTimeout(() => {
-    notificationElement.classList.add('active');
-  }, 10);
+  notification.style.display = 'block';
   
-  // Configurer le timer pour fermer automatiquement
-  if (notification.duration) {
-    if (notificationTimer) {
-      clearTimeout(notificationTimer);
+  // Masquer automatiquement après un délai
+  setTimeout(() => {
+    if (notification) {
+      notification.classList.add('hiding');
+      setTimeout(() => {
+        notification.style.display = 'none';
+        notification.classList.remove('hiding');
+      }, 300);
     }
-    
-    notificationTimer = setTimeout(() => {
-      closeNotification(notificationElement);
-    }, notification.duration);
-  }
+  }, 5000);
 }
 
-// Fermer une notification
-function closeNotification(notificationElement) {
-  // Masquer la notification
-  notificationElement.classList.remove('active');
-  
-  // Nettoyer le timer
-  if (notificationTimer) {
-    clearTimeout(notificationTimer);
-    notificationTimer = null;
+/**
+ * Met à jour l'interface des missions après des changements de l'état du jeu
+ */
+function updateMissionsInterface() {
+  if (!missionSystem) {
+    console.warn("Système de mission non initialisé, impossible de mettre à jour l'interface");
+    return;
   }
   
-  // Attendre la fin de l'animation pour afficher la suivante
-  setTimeout(() => {
-    showNextNotification();
-  }, 500);
-}
-
-// Obtenir le libellé d'un type de notification
-function getNotificationTypeLabel(type) {
-  switch (type) {
-    case 'mission':
-    case 'mission-completed':
-    case 'mission-activated':
-    case 'mission-unlocked':
-      return 'Mission';
-    case 'event':
-      return 'Événement';
-    case 'era-change':
-      return 'Nouvelle ère';
-    case 'tipping-point':
-      return 'Point de bascule';
-    case 'achievement':
-      return 'Réalisation';
-    default:
-      return 'Information';
+  // Vérifier les objectifs des missions actives
+  if (typeof missionSystem.checkMissionObjectives === 'function') {
+    missionSystem.checkMissionObjectives();
   }
+  
+  // Mettre à jour l'affichage des missions
+  renderMissions(missionSystem);
+  renderAvailableMissions(missionSystem);
+  renderCompletedMissions(missionSystem);
 }
 
-// Exporter les fonctions utilisées par d'autres modules
-export { 
-  showNarrativeEvent, 
-  closeNarrativeEvent
+// Exporter les fonctions nécessaires
+export {
+  initMissionsInterface,
+  setupMissionsInterface,
+  updateMissionsInterface,
+  showMissionDetails
 };

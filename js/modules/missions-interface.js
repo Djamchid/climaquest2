@@ -480,8 +480,54 @@ function renderCompletedMissions(missionSystem) {
  * @param {string} message - Message de la notification
  * @param {string} type - Type de notification ('success', 'warning', 'error', 'info')
  */
-function showNotification(title, message, type = 'info') {
-  // Créer l'élément de notification s'il n'existe pas
+// 1. Fix missions-interface.js exports
+// Open js/modules/missions-interface.js and modify the export statement at the end:
+
+// Original export statement:
+export {
+  initMissionsInterface,
+  setupMissionsInterface, 
+  updateMissionsInterface,
+  showMissionDetails
+};
+
+// Change to this new export statement:
+export {
+  initMissionsInterface,
+  setupMissionsInterface,
+  updateMissionsInterface as updateAfterTurn, // Alias for updateAfterTurn
+  showMissionDetails,
+  showNotification
+};
+
+// 2. Modify the showNotification function to accept either separate parameters or an object
+
+// Find the showNotification function in missions-interface.js (around line 395)
+// and replace it with this flexible version:
+
+/**
+ * Shows a notification to the user
+ * @param {string|object} titleOrOptions - Either the title string or an options object
+ * @param {string} [message] - The message (if using separate parameters)
+ * @param {string} [type='info'] - The notification type (if using separate parameters)
+ * @param {number} [duration=5000] - How long to show the notification in ms
+ */
+function showNotification(titleOrOptions, message, type = 'info', duration = 5000) {
+  // Handle both parameter styles
+  let title, notificationType = type, notificationDuration = duration;
+  
+  if (typeof titleOrOptions === 'object') {
+    // Object parameter style
+    title = titleOrOptions.title;
+    message = titleOrOptions.message;
+    notificationType = titleOrOptions.type || 'info';
+    notificationDuration = titleOrOptions.duration || 5000;
+  } else {
+    // Individual parameters style
+    title = titleOrOptions;
+  }
+  
+  // Create notification element if it doesn't exist
   let notification = document.getElementById('game-notification');
   if (!notification) {
     notification = document.createElement('div');
@@ -489,10 +535,10 @@ function showNotification(title, message, type = 'info') {
     document.body.appendChild(notification);
   }
   
-  // Définir la classe selon le type
-  notification.className = `notification ${type}`;
+  // Set class based on type
+  notification.className = `notification ${notificationType}`;
   
-  // Définir le contenu
+  // Set content
   notification.innerHTML = `
     <div class="notification-header">
       <h4>${title}</h4>
@@ -503,7 +549,7 @@ function showNotification(title, message, type = 'info') {
     </div>
   `;
   
-  // Gérer la fermeture de la notification
+  // Handle notification close
   const closeBtn = notification.querySelector('.close-notification');
   if (closeBtn) {
     closeBtn.addEventListener('click', () => {
@@ -515,10 +561,10 @@ function showNotification(title, message, type = 'info') {
     });
   }
   
-  // Afficher la notification
+  // Show notification
   notification.style.display = 'block';
   
-  // Masquer automatiquement après un délai
+  // Auto-hide after the specified duration
   setTimeout(() => {
     if (notification) {
       notification.classList.add('hiding');
@@ -527,7 +573,7 @@ function showNotification(title, message, type = 'info') {
         notification.classList.remove('hiding');
       }, 300);
     }
-  }, 5000);
+  }, notificationDuration);
 }
 
 /**

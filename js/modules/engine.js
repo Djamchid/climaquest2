@@ -482,6 +482,8 @@ export function nextTurn() {
   return ev;
 }
 
+// Partie à corriger dans engine.js
+
 export function resetGame() {
   console.log("Réinitialisation du jeu");
   
@@ -494,6 +496,19 @@ export function resetGame() {
   // Mettre à jour l'année si nécessaire
   if (currentYear > 2025) {
     state.year = currentYear;
+  }
+  
+  // CORRECTION: S'assurer que l'objet stats existe et est correctement initialisé
+  if (!state.stats) {
+    state.stats = {
+      tech_investments: 0,
+      renewable_actions: 0,
+      diplomatic_choices: 0,
+      education_actions: 0,
+      social_satisfaction: 70,
+      reputation: 50,
+      public_awareness: 50
+    };
   }
   
   // Réinitialiser les autres variables
@@ -516,7 +531,6 @@ export function resetGame() {
   
   return true;
 }
-
 // Mettre à jour la progression d'initialisation
 function updateInitProgress(system) {
   initializationProgress.systems[system] = true;

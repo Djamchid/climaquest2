@@ -152,21 +152,47 @@ function loadResources() {
 }
 
 // Fonction pour précharger les modules JS nécessaires
+// Partie à modifier dans main.js
+
+// Fonction pour précharger les modules JS nécessaires
 function preloadModules() {
   return Promise.all([
     import('./modules/engine.js'),
     import('./modules/interface.js'),
-    import('./modules/missions.js'),
+    // CORRECTION: Charger d'abord le module missions de base
+    import('./modules/missions.js').catch(err => {
+      console.warn("Impossible de charger le module missions principal, utilisation du fallback:", err);
+      // Tenter de charger le module de fallback
+      return import('./data/missions.js').catch(fallbackErr => {
+        console.error("Impossible de charger le module missions fallback:", fallbackErr);
+        // Créer un objet missions minimal pour éviter les erreurs
+        return { 
+          missions: [], 
+          CLIMATE_ERAS: [],
+          missionSystem: { initialize: () => ({ currentMissions: [] }) }
+        };
+      });
+    }),
     import('./modules/narrative-events.js'),
     import('./data/actions.js'),
     import('./data/events.js')
-  ]).catch(error => {
+  ]).then(modules => {
+    // Si les missions ont été chargées, les rendre disponibles globalement
+    if (modules[2] && modules[2].missions) {
+      window.missions = modules[2].missions;
+      window.missionModule = { 
+        missions: modules[2].missions,
+        CLIMATE_ERAS: modules[2].CLIMATE_ERAS
+      };
+      console.log("Modules missions préchargés avec succès");
+    }
+    return modules;
+  }).catch(error => {
     console.error("Erreur lors du préchargement des modules:", error);
     // Continuer malgré l'erreur
     return [];
   });
 }
-
 // Créer un élément d'écran de chargement persistant qui sera géré par engine.js
 function createLoadingScreen() {
   // Vérifier si l'écran existe déjà

@@ -670,50 +670,47 @@ function showNotification(titleOrOptions, message, type = 'info', duration = 500
 /**
  * Met à jour l'interface des missions après des changements de l'état du jeu
  */
+// Partie à corriger dans missions-interface.js
+
+// Modifier la fonction updateMissionsInterface pour utiliser directement le module missions
 function updateMissionsInterface() {
   if (!missionSystem) {
     console.warn("Système de mission non initialisé, impossible de mettre à jour l'interface");
     return;
   }
   
-  // Rendre disponible le catalogue de missions pour les fonctions de rendu
-  window.missionModule = window.missionModule || {};
-  window.missionModule.missions = window.missionModule.missions || [];
-  
-  // Essayer de charger le catalogue de missions à partir des modules
-  try {
-    const missionsModule = import('../data/missions.js');
+  // Import direct du module missions au lieu de tenter un import dynamique
+  import('../modules/missions.js').then(module => {
+    // Mettre à disposition le catalogue de missions
+    window.missionModule = window.missionModule || {};
+    window.missionModule.missions = module.missions || [];
     
-    // Si le module existe, mettre à jour le catalogue
-    if (missionsModule && missionsModule.missions) {
-      window.missionModule.missions = missionsModule.missions;
+    // Vérifier les objectifs des missions actives
+    if (typeof missionSystem.checkMissionObjectives === 'function') {
+      missionSystem.currentMissions.forEach(missionId => {
+        missionSystem.checkMissionObjectives(missionId);
+      });
+    } else if (typeof missionSystem.updateMissions === 'function') {
+      missionSystem.updateMissions();
     }
-  } catch (error) {
-    // Si le module n'existe pas, utiliser une autre source
-    try {
-      if (window.missions) {
-        window.missionModule.missions = window.missions;
-      } else if (typeof missions !== 'undefined') {
-        window.missionModule.missions = missions;
-      }
-    } catch (error) {
-      console.warn("Impossible de charger le catalogue de missions", error);
+    
+    // Mettre à jour l'affichage des missions
+    renderMissions();
+    renderAvailableMissions();
+    renderCompletedMissions();
+  }).catch(err => {
+    console.error("Erreur lors du chargement du module missions:", err);
+    
+    // Fallback: utiliser le module missions directement s'il est déjà chargé
+    if (window.missions) {
+      window.missionModule = { missions: window.missions };
+      
+      // Mettre à jour l'affichage des missions
+      renderMissions();
+      renderAvailableMissions();
+      renderCompletedMissions();
     }
-  }
-  
-  // Vérifier les objectifs des missions actives
-  if (typeof missionSystem.checkMissionObjectives === 'function') {
-    missionSystem.currentMissions.forEach(missionId => {
-      missionSystem.checkMissionObjectives(missionId);
-    });
-  } else if (typeof missionSystem.updateMissions === 'function') {
-    missionSystem.updateMissions();
-  }
-  
-  // Mettre à jour l'affichage des missions
-  renderMissions();
-  renderAvailableMissions();
-  renderCompletedMissions();
+  });
 }
 
 export {

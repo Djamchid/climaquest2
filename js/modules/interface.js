@@ -332,14 +332,28 @@ document.addEventListener('keydown', function(e) {
   }
 });
 
+// Partie à corriger dans interface.js
+
 function showEventNotification(text) {
-  // Vérifier que les éléments existent avant de les utiliser
-  const eventDescription = document.getElementById('eventDescription');
-  const eventNotification = document.getElementById('eventNotification');
+  // Créer les éléments s'ils n'existent pas
+  let eventNotification = document.getElementById('eventNotification');
+  let eventDescription = document.getElementById('eventDescription');
   
-  if (!eventDescription || !eventNotification) {
-    console.error("Éléments d'événement non trouvés dans le DOM");
-    return;
+  if (!eventNotification) {
+    // Créer la notification d'événement
+    eventNotification = document.createElement('div');
+    eventNotification.id = 'eventNotification';
+    eventNotification.className = 'event-notification';
+    
+    // Créer le conteneur de description
+    eventDescription = document.createElement('p');
+    eventDescription.id = 'eventDescription';
+    
+    // Assembler les éléments
+    eventNotification.appendChild(eventDescription);
+    document.body.appendChild(eventNotification);
+    
+    console.log("Éléments de notification d'événement créés dynamiquement");
   }
   
   // Mettre à jour le texte de la notification
@@ -353,7 +367,6 @@ function showEventNotification(text) {
     eventNotification.style.display = 'none';
   }, 5000);
 }
-
 function filterActionsByCategory() {
   document.querySelectorAll('.action-btn').forEach(btn => {
     if (activeCategory === 'all' || btn.dataset.category === activeCategory) {

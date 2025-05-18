@@ -1,4 +1,5 @@
-// missions-interface.js - Complete revised file
+// Correction de l'interface des missions pour ClimaQuest
+// Fichier: js/modules/missions-interface.js
 
 /**
  * missions-interface.js
@@ -7,6 +8,8 @@
 
 // Référence au système de mission (injecté depuis engine.js)
 let missionSystem = null;
+// Catalogue des missions
+let missionsData = [];
 
 /**
  * Initialise l'interface des missions
@@ -21,10 +24,49 @@ function initMissionsInterface(missionSys) {
   missionSystem = missionSys;
   console.log("Interface des missions initialisée");
   
+  // Récupérer le catalogue des missions
+  loadMissionsCatalog();
+  
   // Configurer les écouteurs d'événements globaux
   setupEventListeners();
   
   return true;
+}
+
+/**
+ * Charge le catalogue des missions depuis les sources disponibles
+ */
+function loadMissionsCatalog() {
+  // Essayer différentes sources pour obtenir les missions
+  if (window.missions && Array.isArray(window.missions)) {
+    missionsData = window.missions;
+    console.log("Catalogue de missions chargé depuis window.missions");
+    return true;
+  }
+  
+  if (window.missionModule && window.missionModule.missions) {
+    missionsData = window.missionModule.missions;
+    console.log("Catalogue de missions chargé depuis window.missionModule");
+    return true;
+  }
+  
+  // Dernière tentative: essayer d'importer directement
+  try {
+    import('../data/missions.js').then(module => {
+      if (module.missions) {
+        missionsData = module.missions;
+        console.log("Catalogue de missions chargé dynamiquement");
+        updateMissionsInterface();
+        return true;
+      }
+    }).catch(error => {
+      console.warn("Impossible de charger le module missions.js:", error);
+    });
+  } catch (error) {
+    console.warn("Erreur lors de l'import dynamique des missions:", error);
+  }
+  
+  return false;
 }
 
 /**
@@ -77,6 +119,11 @@ function setupMissionsInterface(missionSys) {
           switchMissionTab(this.dataset.tab);
         });
       });
+    }
+    
+    // Charger le catalogue de missions si nécessaire
+    if (missionsData.length === 0) {
+      loadMissionsCatalog();
     }
     
     // Mettre à jour l'interface avec les données actuelles
@@ -138,11 +185,37 @@ function setupEventListeners() {
 }
 
 /**
- * Attache des écouteurs d'événements spécifiques aux éléments de mission
+ * Trouve une mission par son ID dans le catalogue de missions
+ * @param {string} missionId - Identifiant de la mission à trouver
+ * @return {Object|null} La mission trouvée ou null
  */
-function attachMissionEventListeners() {
-  // Cette fonction peut être utilisée pour attacher des écouteurs spécifiques
-  // après le rendu des missions, si nécessaire
+function findMissionById(missionId) {
+  // D'abord chercher dans notre catalogue local
+  if (missionsData && missionsData.length > 0) {
+    const mission = missionsData.find(m => m.id === missionId);
+    if (mission) return mission;
+  }
+  
+  // Chercher dans window.missions (version globale)
+  if (window.missions && Array.isArray(window.missions)) {
+    const mission = window.missions.find(m => m.id === missionId);
+    if (mission) return mission;
+  }
+  
+  // Chercher dans window.missionModule
+  if (window.missionModule && window.missionModule.missions) {
+    const mission = window.missionModule.missions.find(m => m.id === missionId);
+    if (mission) return mission;
+  }
+  
+  // Fallback: chercher dans le système de mission si disponible
+  if (missionSystem && missionSystem.missions) {
+    const mission = missionSystem.missions.find(m => m.id === missionId);
+    if (mission) return mission;
+  }
+  
+  console.warn(`Impossible de trouver la mission ${missionId}`);
+  return null;
 }
 
 /**
@@ -153,38 +226,30 @@ function showMissionDetails(missionId) {
   // Vérifier si le système de mission est disponible
   if (!missionSystem) {
     console.error("Système de mission non disponible");
-    showNotification("Erreur", "Impossible d'afficher les détails de la mission", "error");
+    showNotification({
+      title: "Erreur",
+      message: "Impossible d'afficher les détails de la mission",
+      type: "error"
+    });
     return;
   }
   
   // Trouver la mission appropriée
-  const activeMissions = missionSystem.currentMissions || [];
-  const availableMissions = missionSystem.unlockedMissions || [];
-  const completedMissions = missionSystem.completedMissions || [];
-  
-  // Trouver la mission dans toutes les listes
-  let mission = null;
-  
-  // Chercher dans les missions actives
-  if (activeMissions.includes(missionId)) {
-    mission = findMissionById(missionId);
-    if (mission) mission.active = true;
-  }
-  
-  // Chercher dans les missions disponibles
-  if (!mission && availableMissions.includes(missionId)) {
-    mission = findMissionById(missionId);
-  }
-  
-  // Chercher dans les missions complétées
-  if (!mission && completedMissions.includes(missionId)) {
-    mission = findMissionById(missionId);
-    if (mission) mission.completed = true;
-  }
+  const mission = findMissionById(missionId);
   
   if (!mission) {
     console.error(`Mission avec ID ${missionId} non trouvée`);
     return;
+  }
+  
+  // Déterminer l'état de la mission
+  let isMissionActive = false;
+  let isMissionCompleted = false;
+  
+  if (missionSystem.currentMissions && missionSystem.currentMissions.includes(missionId)) {
+    isMissionActive = true;
+  } else if (missionSystem.completedMissions && missionSystem.completedMissions.includes(missionId)) {
+    isMissionCompleted = true;
   }
   
   // Créer ou obtenir le modal
@@ -197,12 +262,11 @@ function showMissionDetails(missionId) {
   
   // Obtenir les objectifs de la mission avec leur statut actuel
   let objectives = mission.objectives || [];
-  if (mission.active) {
+  let objectiveStatus = null;
+  
+  if (isMissionActive) {
     // Si la mission est active, obtenir le statut des objectifs
-    const status = missionSystem.checkMissionObjectives(missionId);
-    if (status && status.objectives) {
-      objectives = status.objectives;
-    }
+    objectiveStatus = missionSystem.checkMissionObjectives(missionId);
   }
   
   // Générer le contenu du modal
@@ -210,7 +274,17 @@ function showMissionDetails(missionId) {
   if (objectives && objectives.length) {
     objectivesHTML = '<ul class="mission-objectives detailed">';
     for (const obj of objectives) {
-      const statusClass = obj.completed ? 'completed' : 'pending';
+      let isCompleted = false;
+      
+      // Vérifier si l'objectif est complété
+      if (objectiveStatus && objectiveStatus.objectives) {
+        const matchingObj = objectiveStatus.objectives.find(o => o.id === obj.id);
+        if (matchingObj) {
+          isCompleted = matchingObj.completed || false;
+        }
+      }
+      
+      const statusClass = isCompleted ? 'completed' : 'pending';
       objectivesHTML += `
         <li class="mission-objective ${statusClass}">
           <span class="objective-status-icon"></span>
@@ -241,7 +315,7 @@ function showMissionDetails(missionId) {
       <span class="close-modal">&times;</span>
       <div class="mission-details-header">
         <h3>${mission.title}</h3>
-        <span class="mission-era-badge">${mission.era || 'Ère actuelle'}</span>
+        <span class="mission-era-badge">${mission.eraId || 'Ère actuelle'}</span>
       </div>
       <div class="mission-details-body">
         <p class="mission-description">${mission.description}</p>
@@ -252,9 +326,9 @@ function showMissionDetails(missionId) {
         ${rewardHTML}
       </div>
       <div class="mission-details-footer">
-        ${!mission.completed ? `
-          ${!mission.active ? `<button class="btn btn-primary mission-accept-btn" data-mission-id="${mission.id}">Accepter</button>` : ''}
-          ${mission.active ? `<button class="btn btn-warning mission-abandon-btn" data-mission-id="${mission.id}">Abandonner</button>` : ''}
+        ${!isMissionCompleted ? `
+          ${!isMissionActive ? `<button class="btn btn-primary mission-accept-btn" data-mission-id="${mission.id}">Accepter</button>` : ''}
+          ${isMissionActive ? `<button class="btn btn-warning mission-abandon-btn" data-mission-id="${mission.id}">Abandonner</button>` : ''}
         ` : '<span class="mission-completed-badge">Mission complétée</span>'}
         <button class="btn btn-secondary close-details-btn">Fermer</button>
       </div>
@@ -271,29 +345,6 @@ function showMissionDetails(missionId) {
   
   // Afficher le modal
   missionModal.style.display = 'block';
-}
-
-/**
- * Trouve une mission par son ID dans le catalogue de missions
- * @param {string} missionId - Identifiant de la mission à trouver
- * @return {Object|null} La mission trouvée ou null
- */
-function findMissionById(missionId) {
-  // Importation dynamique pour éviter les dépendances circulaires
-  // This would ideally be imported at the top of the file
-  const { missions } = window.missionModule || {};
-  
-  if (missions) {
-    return missions.find(m => m.id === missionId);
-  }
-  
-  // Fallback: chercher dans le système de mission si disponible
-  if (missionSystem && missionSystem.missions) {
-    return missionSystem.missions.find(m => m.id === missionId);
-  }
-  
-  console.warn(`Impossible de trouver la mission ${missionId}`);
-  return null;
 }
 
 /**
@@ -320,7 +371,7 @@ function acceptMission(missionId) {
     // Notification
     showNotification({
       title: "Mission acceptée",
-      message: `Vous avez accepté la mission: ${missionId}`,
+      message: `Vous avez accepté la mission!`,
       type: "success"
     });
   } else {
@@ -361,7 +412,7 @@ function abandonMission(missionId) {
     // Notification
     showNotification({
       title: "Mission abandonnée",
-      message: `Vous avez abandonné la mission: ${missionId}`,
+      message: `Vous avez abandonné la mission.`,
       type: "warning"
     });
   } else {
@@ -401,19 +452,11 @@ function renderMissions() {
     return;
   }
 
-  // Importation dynamique pour éviter les dépendances circulaires
-  // This would ideally be imported at the top of the file
-  const { missions } = window.missionModule || {};
-  if (!missions) {
-    console.error("Catalogue de missions non disponible");
-    return;
-  }
-
   // Afficher chaque mission active
   for (const missionId of activeMissionIds) {
-    const mission = missions.find(m => m.id === missionId);
-    if (!mission || !mission.id || !mission.title) {
-      console.warn("Mission invalide détectée:", missionId);
+    const mission = findMissionById(missionId);
+    if (!mission) {
+      console.warn(`Mission ${missionId} non trouvée dans le catalogue`);
       continue;
     }
 
@@ -428,7 +471,7 @@ function renderMissions() {
     if (status && status.objectives && status.objectives.length > 0) {
       objectivesHTML = '<ul class="mission-objectives">';
       for (const objective of status.objectives) {
-        if (!objective || !objective.description) continue;
+        if (!objective) continue;
         
         // Déterminer si l'objectif est complété
         const statusClass = objective.completed ? 'completed' : 'pending';
@@ -436,7 +479,7 @@ function renderMissions() {
         objectivesHTML += `
           <li class="mission-objective ${statusClass}">
             <span class="objective-status-icon"></span>
-            <span class="objective-description">${objective.description}</span>
+            <span class="objective-description">${objective.description || 'Objectif'}</span>
           </li>
         `;
       }
@@ -469,9 +512,6 @@ function renderMissions() {
 
     missionsContainer.appendChild(missionElement);
   }
-
-  // Ajouter des écouteurs d'événements pour les boutons
-  attachMissionEventListeners();
 }
 
 /**
@@ -500,16 +540,9 @@ function renderAvailableMissions() {
     return;
   }
   
-  // Importation dynamique pour éviter les dépendances circulaires
-  const { missions } = window.missionModule || {};
-  if (!missions) {
-    console.error("Catalogue de missions non disponible");
-    return;
-  }
-  
   // Afficher chaque mission disponible
   for (const missionId of availableMissionIds) {
-    const mission = missions.find(m => m.id === missionId);
+    const mission = findMissionById(missionId);
     if (!mission) {
       console.warn(`Mission ${missionId} non trouvée dans le catalogue`);
       continue;
@@ -561,16 +594,9 @@ function renderCompletedMissions() {
     return;
   }
   
-  // Importation dynamique pour éviter les dépendances circulaires
-  const { missions } = window.missionModule || {};
-  if (!missions) {
-    console.error("Catalogue de missions non disponible");
-    return;
-  }
-  
   // Afficher chaque mission complétée
   for (const missionId of completedMissionIds) {
-    const mission = missions.find(m => m.id === missionId);
+    const mission = findMissionById(missionId);
     if (!mission) {
       console.warn(`Mission ${missionId} non trouvée dans le catalogue`);
       continue;
@@ -670,47 +696,61 @@ function showNotification(titleOrOptions, message, type = 'info', duration = 500
 /**
  * Met à jour l'interface des missions après des changements de l'état du jeu
  */
-// Partie à corriger dans missions-interface.js
-
-// Modifier la fonction updateMissionsInterface pour utiliser directement le module missions
 function updateMissionsInterface() {
   if (!missionSystem) {
     console.warn("Système de mission non initialisé, impossible de mettre à jour l'interface");
     return;
   }
   
-  // Import direct du module missions au lieu de tenter un import dynamique
-  import('../modules/missions.js').then(module => {
-    // Mettre à disposition le catalogue de missions
-    window.missionModule = window.missionModule || {};
-    window.missionModule.missions = module.missions || [];
-    
-    // Vérifier les objectifs des missions actives
-    if (typeof missionSystem.checkMissionObjectives === 'function') {
-      missionSystem.currentMissions.forEach(missionId => {
-        missionSystem.checkMissionObjectives(missionId);
-      });
-    } else if (typeof missionSystem.updateMissions === 'function') {
-      missionSystem.updateMissions();
+  // S'assurer que nous avons le catalogue de missions
+  if (missionsData.length === 0) {
+    // Essayer d'abord de le charger depuis les sources globales
+    if (window.missions && Array.isArray(window.missions)) {
+      missionsData = window.missions;
+    } else if (window.missionModule && window.missionModule.missions) {
+      missionsData = window.missionModule.missions;
+    } else {
+      // Tenter un import si rien n'est disponible
+      try {
+        import('../data/missions.js').then(module => {
+          if (module && module.missions) {
+            missionsData = module.missions;
+            // Une fois les missions chargées, mettre à jour l'interface
+            renderAllMissions();
+          }
+        }).catch(err => {
+          console.warn("Impossible de charger dynamiquement le catalogue des missions:", err);
+        });
+        
+        // Sortir pour éviter de rendre avant que les missions soient chargées
+        return;
+      } catch (error) {
+        console.warn("Échec de l'import dynamique des missions:", error);
+      }
     }
-    
-    // Mettre à jour l'affichage des missions
-    renderMissions();
-    renderAvailableMissions();
-    renderCompletedMissions();
-  }).catch(err => {
-    console.error("Erreur lors du chargement du module missions:", err);
-    
-    // Fallback: utiliser le module missions directement s'il est déjà chargé
-    if (window.missions) {
-      window.missionModule = { missions: window.missions };
-      
-      // Mettre à jour l'affichage des missions
-      renderMissions();
-      renderAvailableMissions();
-      renderCompletedMissions();
-    }
-  });
+  }
+  
+  // Rendre toutes les catégories de missions
+  renderAllMissions();
+}
+
+/**
+ * Rend toutes les catégories de missions
+ */
+function renderAllMissions() {
+  // Vérifier les objectifs des missions actives
+  if (typeof missionSystem.checkMissionObjectives === 'function' && missionSystem.currentMissions) {
+    missionSystem.currentMissions.forEach(missionId => {
+      missionSystem.checkMissionObjectives(missionId);
+    });
+  } else if (typeof missionSystem.updateMissions === 'function') {
+    missionSystem.updateMissions();
+  }
+  
+  // Mettre à jour l'affichage des missions
+  renderMissions();
+  renderAvailableMissions();
+  renderCompletedMissions();
 }
 
 export {

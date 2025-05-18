@@ -21,15 +21,9 @@
   <link rel="icon" href="assets/images/earth-favicon.svg" type="image/svg+xml">
 </head>
 <body>
-  <div class="container">
-    <header>
-      <h1>ClimaQuest – Architecte du Monde de Demain</h1>
-      <p class="tagline">Guidez votre région à travers les défis climatiques du 21ème siècle</p>
-    </header>
-    
-    <!-- HUD: Barre d'informations principales -->
-    <!-- Remplacer le div HUD existant par celui-ci -->
-    <div id="hud" aria-live="polite">
+  <!-- HUD: Barre d'informations principales (fixe en haut) -->
+  <div id="hud" class="fixed-hud" aria-live="polite">
+    <div class="hud-inner">
       <span id="year"></span>
       <span id="budget"></span>
       <span id="temp"></span>
@@ -37,76 +31,119 @@
       <span id="sea"></span>
       <span id="biodiversity"></span>
     </div>
-    <!-- Boutons de contrôle principaux -->
-    <div class="control-buttons">
-      <button id="nextBtn" class="btn btn-primary">Tour suivant</button>
-      <button id="resetBtn" class="btn btn-warning">Recommencer la simulation</button>
-      <button id="helpBtn" class="btn btn-secondary">Aide</button>
-    </div>
+  </div>
 
-    <!-- Le panneau de missions sera inséré ici par le code JavaScript -->
-    <!-- Panneau de missions -->
-    <div id="missions-panel">
-      <!-- Le contenu sera généré dynamiquement -->
-    </div>
+  <div class="container">
+    <header>
+      <h1>ClimaQuest – Architecte du Monde de Demain</h1>
+      <p class="tagline">Guidez votre région à travers les défis climatiques du 21ème siècle</p>
+    </header>
     
-    <!-- Visualisation -->
-    <div class="visualization-container">
-      <canvas id="map" width="800" height="300" role="img" aria-label="Carte mondiale simulée"></canvas>
-    </div>
-
-    <!-- Actions disponibles -->
-    <h2>Actions disponibles</h2>
-    <div class="category-tabs" id="categoryTabs"></div>
-    <div id="actions" class="actions" role="region" aria-label="Panneau des actions"></div>
-
-    <!-- Investissements actifs -->
-    <h2>Investissements actifs</h2>
-    <div id="investments" class="investments" role="region" aria-label="Panneau des investissements">
-      <p id="no-investments">Aucun investissement actif</p>
-    </div>
-    
-    <!-- Le tableau de bord sera inséré ici par le code JavaScript -->
-    
-    <!-- Mode d'emploi -->
-    <div class="instructions">
-      <h3>Guide du Conseil Climatique</h3>
-      <div class="instructions-grid">
-        <div class="instruction-card">
-          <h4>Votre Mission</h4>
-          <p>En tant qu'Architecte de l'Avenir, vous devez guider votre région à travers les défis climatiques tout en équilibrant économie, environnement et société.</p>
+    <!-- Disposition à deux colonnes -->
+    <div class="main-content">
+      <!-- Colonne gauche: Visualisation + Actions -->
+      <div class="game-controls-column">
+        <!-- Visualisation -->
+        <div class="visualization-container">
+          <canvas id="map" width="800" height="250" role="img" aria-label="Carte mondiale simulée"></canvas>
         </div>
-        <div class="instruction-card">
-          <h4>Missions & Objectifs</h4>
-          <p>Accomplissez des missions pour progresser à travers les ères climatiques. Chaque mission a des objectifs spécifiques liés à la température, au CO₂, à la biodiversité et plus encore.</p>
+        
+        <!-- Panneau d'actions -->
+        <div class="actions-panel">
+          <h2>Actions disponibles</h2>
+          <div class="category-tabs" id="categoryTabs"></div>
+          <div id="actions" class="actions" role="region" aria-label="Panneau des actions"></div>
         </div>
-        <div class="instruction-card">
-          <h4>Actions & Ressources</h4>
-          <p>Utilisez votre budget pour mettre en œuvre des actions climatiques. Certaines actions génèrent des retours sur investissement, d'autres ont des effets immédiats sur le climat.</p>
+        
+        <!-- Boutons de contrôle -->
+        <div class="control-buttons">
+          <button id="nextBtn" class="btn btn-primary">Tour suivant</button>
+          <button id="resetBtn" class="btn btn-warning">Recommencer la simulation</button>
+          <button id="helpBtn" class="btn btn-secondary">Aide</button>
         </div>
-        <div class="instruction-card">
-          <h4>Événements & Décisions</h4>
-          <p>Réagissez aux événements climatiques et aux points de bascule. Vos choix auront des conséquences à long terme sur votre parcours climatique.</p>
+      </div>
+      
+      <!-- Colonne droite: Missions + Investissements + Mini-dashboard -->
+      <div class="feedback-column">
+        <!-- Panneau de missions -->
+        <div id="missions-panel">
+          <!-- Le contenu sera généré dynamiquement -->
+        </div>
+        
+        <!-- Investissements actifs -->
+        <div class="investments-panel">
+          <h3>Investissements actifs</h3>
+          <div id="investments" class="investments" role="region" aria-label="Panneau des investissements">
+            <p id="no-investments">Aucun investissement actif</p>
+          </div>
+        </div>
+        
+        <!-- Mini-tableau de bord -->
+        <div id="mini-dashboard" class="mini-dashboard">
+          <!-- Indicateurs climatiques condensés - sera mis à jour dynamiquement -->
         </div>
       </div>
     </div>
     
-    <!-- Journal de bord -->
-    <button id="toggleJournal">Afficher le Journal de Bord</button>
-    <div id="journal-de-bord">
-      <div class="journal-header">
-        <h3>Journal de Bord</h3>
-        <div class="journal-filters">
-          <button class="journal-filter active" data-filter="all">Tous</button>
-          <button class="journal-filter" data-filter="info">Info</button>
-          <button class="journal-filter" data-filter="warning">Avertissements</button>
-          <button class="journal-filter" data-filter="error">Erreurs</button>
-          <span class="journal-entry-count">0 entrées</span>
-          <button id="clearJournal">Effacer</button>
+    <!-- Sections dépliables -->
+    <div class="collapsible-sections">
+      <!-- Tableau de bord détaillé -->
+      <div class="collapsible-section" id="dashboard-section">
+        <h3 class="collapsible-header">Tableau de Bord Climatique <span class="toggle-icon">+</span></h3>
+        <div class="collapsible-content">
+          <div id="climate-dashboard">
+            <!-- Le contenu sera généré dynamiquement -->
+          </div>
         </div>
       </div>
-      <div class="journal-content">
-        <!-- Les entrées du journal seront ajoutées ici dynamiquement -->
+      
+      <!-- Mode d'emploi -->
+      <div class="collapsible-section" id="instructions-section">
+        <h3 class="collapsible-header">Guide du Conseil Climatique <span class="toggle-icon">+</span></h3>
+        <div class="collapsible-content">
+          <div class="instructions">
+            <div class="instructions-grid">
+              <div class="instruction-card">
+                <h4>Votre Mission</h4>
+                <p>En tant qu'Architecte de l'Avenir, vous devez guider votre région à travers les défis climatiques tout en équilibrant économie, environnement et société.</p>
+              </div>
+              <div class="instruction-card">
+                <h4>Missions & Objectifs</h4>
+                <p>Accomplissez des missions pour progresser à travers les ères climatiques. Chaque mission a des objectifs spécifiques liés à la température, au CO₂, à la biodiversité et plus encore.</p>
+              </div>
+              <div class="instruction-card">
+                <h4>Actions & Ressources</h4>
+                <p>Utilisez votre budget pour mettre en œuvre des actions climatiques. Certaines actions génèrent des retours sur investissement, d'autres ont des effets immédiats sur le climat.</p>
+              </div>
+              <div class="instruction-card">
+                <h4>Événements & Décisions</h4>
+                <p>Réagissez aux événements climatiques et aux points de bascule. Vos choix auront des conséquences à long terme sur votre parcours climatique.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Journal de bord -->
+      <div class="collapsible-section" id="journal-section">
+        <h3 class="collapsible-header">Journal de Bord <span class="toggle-icon">+</span></h3>
+        <div class="collapsible-content">
+          <div id="journal-de-bord">
+            <div class="journal-header">
+              <div class="journal-filters">
+                <button class="journal-filter active" data-filter="all">Tous</button>
+                <button class="journal-filter" data-filter="info">Info</button>
+                <button class="journal-filter" data-filter="warning">Avertissements</button>
+                <button class="journal-filter" data-filter="error">Erreurs</button>
+                <span class="journal-entry-count">0 entrées</span>
+                <button id="clearJournal">Effacer</button>
+              </div>
+            </div>
+            <div class="journal-content">
+              <!-- Les entrées du journal seront ajoutées ici dynamiquement -->
+            </div>
+          </div>
+        </div>
       </div>
     </div>
     
@@ -116,9 +153,6 @@
     </footer>
   </div>
   
-  <!-- Notification (sera créée dynamiquement) -->
-  <!-- Overlay narratif (sera créé dynamiquement) -->
-
   <!-- Script pour le journal de bord -->
   <script>
     // Journal de Bord
@@ -126,7 +160,6 @@
       // Éléments DOM
       const journalElement = document.getElementById('journal-de-bord');
       const journalContent = journalElement.querySelector('.journal-content');
-      const toggleJournal = document.getElementById('toggleJournal');
       const clearJournal = document.getElementById('clearJournal');
       const entryCountElement = document.querySelector('.journal-entry-count');
       const filterButtons = document.querySelectorAll('.journal-filter');
@@ -135,13 +168,6 @@
       let activeFilter = 'all';
       let entryCount = 0;
       const maxEntries = 100; // Limite d'entrées pour éviter les problèmes de performance
-      
-      // Mettre à jour le texte du bouton selon l'état d'affichage
-      function updateToggleText() {
-        toggleJournal.textContent = journalElement.style.display === 'none' 
-          ? 'Afficher le Journal de Bord' 
-          : 'Masquer le Journal de Bord';
-      }
       
       // Mettre à jour le compteur d'entrées
       function updateEntryCount() {
@@ -223,11 +249,6 @@
       }
       
       // Événements
-      toggleJournal.addEventListener('click', function() {
-        journalElement.style.display = journalElement.style.display === 'none' ? 'block' : 'none';
-        updateToggleText();
-      });
-      
       clearJournal.addEventListener('click', function() {
         journalContent.innerHTML = '';
         entryCount = 0;
@@ -269,9 +290,34 @@
       };
       
       // Initialisation
-      updateToggleText();
       updateEntryCount();
     })();
+    
+    // Gestion des sections dépliables
+    document.addEventListener('DOMContentLoaded', function() {
+      const collapsibles = document.querySelectorAll('.collapsible-header');
+      
+      collapsibles.forEach(header => {
+        header.addEventListener('click', function() {
+          const section = this.parentElement;
+          section.classList.toggle('active');
+          
+          const icon = this.querySelector('.toggle-icon');
+          icon.textContent = section.classList.contains('active') ? '−' : '+';
+          
+          // Fermer les autres sections si celle-ci est ouverte
+          if (section.classList.contains('active')) {
+            collapsibles.forEach(otherHeader => {
+              const otherSection = otherHeader.parentElement;
+              if (otherSection !== section && otherSection.classList.contains('active')) {
+                otherSection.classList.remove('active');
+                otherHeader.querySelector('.toggle-icon').textContent = '+';
+              }
+            });
+          }
+        });
+      });
+    });
   </script>
 
   <!-- Script principal -->

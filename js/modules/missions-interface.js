@@ -550,10 +550,14 @@ function updateMissionsInterface() {
   renderCompletedMissions(missionSystem);
 }
 
-// Exporter les fonctions nécessaires
+//  1. Fix missions-interface.js exports
+// Open js/modules/missions-interface.js and modify the export statement at the end:
+
+// Change to this new export statement:
 export {
   initMissionsInterface,
   setupMissionsInterface,
-  updateMissionsInterface,
-  showMissionDetails
+  updateMissionsInterface as updateAfterTurn, // Alias for updateAfterTurn
+  showMissionDetails,
+  showNotification
 };

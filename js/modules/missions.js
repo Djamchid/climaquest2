@@ -60,6 +60,34 @@ export const missions = [
       { id: "economy-stable", description: "Maintenir au moins 15 points de budget", parameter: "budget", target: ">=15" }
     ],
     reward: { type: "bonus", content: "carbon-economy", description: "Nouvelles opportunités économiques vertes" }
+  },
+    // Deux nouvelles missions pour l'ère "Transition énergétique" (2035-2045)
+  
+  // À ajouter dans le tableau missions du fichier js/modules/missions.js
+  
+  {
+    id: "resilient-cities",
+    eraId: "era-2035-2045",
+    title: "Villes Résilientes",
+    description: "Transformez vos zones urbaines pour résister aux nouvelles conditions climatiques tout en garantissant une haute qualité de vie.",
+    objectives: [
+      { id: "temp-control", description: "Maintenir l'augmentation de température sous 2.0°C", parameter: "temp", target: "<=2.0" },
+      { id: "high-biodiversity", description: "Atteindre un indice de biodiversité d'au moins 1.5", parameter: "biodiversity", target: ">=1.5" },
+      { id: "economic-strength", description: "Maintenir un budget d'au moins 20 points", parameter: "budget", target: ">=20" }
+    ],
+    reward: { type: "unlock", content: "smart-cities-technologies", description: "Nouvelles technologies de villes intelligentes résilientes au climat" }
+  },
+  {
+    id: "sustainable-economy",
+    eraId: "era-2035-2045",
+    title: "Économie Durable",
+    description: "Créez un nouveau modèle économique fondé sur des principes durables et une croissance verte.",
+    objectives: [
+      { id: "co2-reduction-major", description: "Réduire les émissions de CO₂ à moins de 390ppm", parameter: "co2", target: "<=390" },
+      { id: "strong-budget", description: "Atteindre un budget de 25 points", parameter: "budget", target: ">=25" },
+      { id: "sea-level-check", description: "Limiter la montée des eaux à 0.3m maximum", parameter: "sea", target: "<=0.3" }
+    ],
+    reward: { type: "bonus", content: "green-economy-multiplier", description: "Multiplicateur de revenus pour les technologies vertes" }
   }
   // D'autres missions seront définies pour les ères ultérieures
 ];

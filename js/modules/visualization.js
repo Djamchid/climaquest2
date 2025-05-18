@@ -355,7 +355,10 @@ class VisualizationSystem {
   
   // Mettre à jour tous les éléments animés
   update() {
-    // Mettre à jour le cycle jour/nuit
+    // Dans la méthode update de la classe VisualizationSystem, ajoutez au début :
+    const currentTime = Date.now(); // Définition de currentTime
+    
+    // reste du code inchangé...  // Mettre à jour le cycle jour/nuit
     this.landscape.time.cycle += this.landscape.time.speed * this.deltaTime;
     if (this.landscape.time.cycle > 1) this.landscape.time.cycle -= 1;
     

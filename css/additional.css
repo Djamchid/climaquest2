@@ -1,216 +1,302 @@
-/* Styles pour les éléments d'introduction et de chargement */
+// main.js - Complete revised file
 
-/* Écran de chargement */
-#loading-screen {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(33, 33, 33, 0.95);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 2000;
-  transition: opacity 0.5s ease;
-}
+// Point d'entrée principal pour ClimaQuest
+import { setupUI } from './modules/interface.js';
+import { initGame } from './modules/engine.js';
 
-.loading-content {
-  text-align: center;
-  color: white;
-  padding: 2rem;
-  border-radius: var(--border-radius);
-  max-width: 500px;
-}
+// Ajouter une gestion des erreurs globales
+window.onerror = function(message, source, lineno, colno, error) {
+  console.error(`Erreur: ${message} à la ligne ${lineno}:${colno}`);
+  console.error(error);
+  return true;
+};
 
-.loading-content h2 {
-  margin-bottom: 2rem;
-}
-
-.loading-content h2:after {
-  margin: 1rem auto 0;
-}
-
-.loading-spinner {
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  border: 5px solid rgba(255, 255, 255, 0.2);
-  border-top-color: var(--primary);
-  animation: spin 1s linear infinite;
-  margin: 0 auto 2rem;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-.fade-out {
-  opacity: 0;
-}
-
-/* Introduction */
-.intro-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(33, 33, 33, 0.95);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1500;
-  transition: opacity 0.5s ease;
-}
-
-.intro-content {
-  background-color: white;
-  border-radius: var(--border-radius);
-  padding: 2rem;
-  max-width: 800px;
-  width: 90%;
-  max-height: 90vh;
-  overflow-y: auto;
-  animation: slide-up 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-
-@keyframes slide-up {
-  from { transform: translateY(50px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
-}
-
-.intro-content h2 {
-  color: var(--primary-dark);
-  margin-bottom: 1.5rem;
-  text-align: center;
-}
-
-.intro-content p {
-  margin-bottom: 1.5rem;
-  line-height: 1.6;
-}
-
-.intro-advisors {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 1.5rem;
-  margin-bottom: 2rem;
-}
-
-.intro-advisor {
-  text-align: center;
-  width: 120px;
-}
-
-.advisor-avatar {
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  margin: 0 auto 0.5rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: bold;
-  color: white;
-  font-size: 1.5rem;
-}
-
-.advisor-avatar.dr-chen {
-  background-color: var(--character-dr-chen);
-}
-
-.advisor-avatar.ministre-dubois {
-  background-color: var(--character-ministre-dubois);
-}
-
-.advisor-avatar.prof-moreau {
-  background-color: var(--character-prof-moreau);
-}
-
-.advisor-avatar.ingenieur-garcia {
-  background-color: var(--character-ingenieur-garcia);
-}
-
-.advisor-name {
-  font-weight: bold;
-  margin-bottom: 0.2rem;
-}
-
-.advisor-title {
-  font-size: 0.8rem;
-  color: var(--medium);
-}
-
-#start-game {
-  display: block;
-  margin: 0 auto;
-  padding: 1rem 2rem;
-  font-size: 1.1rem;
-}
-
-/* Améliorations esthétiques générales */
-.container {
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-header {
-  margin-bottom: 2rem;
-  text-align: center;
-}
-
-.tagline {
-  color: var(--medium);
-  font-size: 1.2rem;
-  margin-top: -0.5rem;
-  margin-bottom: 2rem;
-}
-
-.visualization-container {
-  margin: 2rem 0;
-  position: relative;
-  background-color: #f5f5f5;
-  border-radius: var(--border-radius);
-  overflow: hidden;
-  box-shadow: 0 3px 6px rgba(0,0,0,0.1);
-}
-
-footer {
-  margin-top: 3rem;
-  text-align: center;
-  padding: 1.5rem;
-  color: var(--medium);
-  border-top: 1px solid var(--primary-light);
-}
-
-footer a {
-  color: var(--primary);
-  text-decoration: none;
-}
-
-footer a:hover {
-  text-decoration: underline;
-}
-
-/* Responsive design improvements */
-@media (max-width: 768px) {
-  .intro-advisors {
-    gap: 1rem;
+// Fonction pour vérifier si le navigateur supporte les fonctionnalités requises
+function checkBrowserCompatibility() {
+  const requiredFeatures = {
+    'localStorage': typeof localStorage !== 'undefined',
+    'ES6 Modules': typeof import === 'function',
+    'Promises': typeof Promise !== 'undefined',
+    'Canvas API': typeof document.createElement('canvas').getContext === 'function'
+  };
+  
+  const missingFeatures = Object.entries(requiredFeatures)
+    .filter(([feature, supported]) => !supported)
+    .map(([feature]) => feature);
+  
+  if (missingFeatures.length > 0) {
+    console.error("Navigateur incompatible. Fonctionnalités manquantes:", missingFeatures.join(', '));
+    
+    // Afficher un message d'erreur à l'utilisateur
+    const errorMessage = document.createElement('div');
+    errorMessage.className = 'browser-error';
+    errorMessage.innerHTML = `
+      <h2>Navigateur non supporté</h2>
+      <p>Votre navigateur ne supporte pas les fonctionnalités suivantes nécessaires à ClimaQuest:</p>
+      <ul>${missingFeatures.map(feature => `<li>${feature}</li>`).join('')}</ul>
+      <p>Veuillez mettre à jour votre navigateur ou utiliser un navigateur moderne comme Chrome, Firefox, Edge ou Safari.</p>
+    `;
+    
+    document.body.prepend(errorMessage);
+    return false;
   }
   
-  .intro-advisor {
-    width: 90px;
+  return true;
+}
+
+// Ajouter une fonction pour gérer le chargement des ressources
+function loadResources() {
+  return new Promise((resolve, reject) => {
+    // Créer un écran de chargement des ressources
+    const resourceLoadingScreen = document.createElement('div');
+    resourceLoadingScreen.className = 'resource-loading-screen';
+    resourceLoadingScreen.innerHTML = `
+      <div class="loading-content">
+        <h2>Chargement des ressources...</h2>
+        <div class="loading-spinner"></div>
+        <p>Préparation des données climatiques</p>
+      </div>
+    `;
+    
+    document.body.appendChild(resourceLoadingScreen);
+    
+    // Liste des ressources à précharger (images, sons, etc.)
+    const resourcesToLoad = [
+      // Précharger les icônes principales
+      { type: 'image', url: 'assets/images/earth-favicon.svg' },
+      // Ajouter d'autres ressources à précharger si nécessaire
+    ];
+    
+    // Compteur de ressources chargées
+    let loadedCount = 0;
+    
+    // Pas de ressources à charger
+    if (resourcesToLoad.length === 0) {
+      // Masquer l'écran de chargement
+      setTimeout(() => {
+        resourceLoadingScreen.classList.add('fade-out');
+        
+        setTimeout(() => {
+          resourceLoadingScreen.remove();
+        }, 500);
+        
+        resolve();
+      }, 500);
+      
+      return;
+    }
+    
+    // Charger chaque ressource
+    resourcesToLoad.forEach(resource => {
+      switch (resource.type) {
+        case 'image':
+          const img = new Image();
+          img.onload = () => {
+            loadedCount++;
+            checkIfComplete();
+          };
+          img.onerror = () => {
+            console.warn(`Impossible de charger l'image: ${resource.url}`);
+            loadedCount++;
+            checkIfComplete();
+          };
+          img.src = resource.url;
+          break;
+        
+        // Ajouter d'autres types de ressources si nécessaire
+        
+        default:
+          console.warn(`Type de ressource non pris en charge: ${resource.type}`);
+          loadedCount++;
+          checkIfComplete();
+      }
+    });
+    
+    // Vérifier si toutes les ressources sont chargées
+    function checkIfComplete() {
+      if (loadedCount === resourcesToLoad.length) {
+        // Masquer l'écran de chargement
+        setTimeout(() => {
+          resourceLoadingScreen.classList.add('fade-out');
+          
+          setTimeout(() => {
+            resourceLoadingScreen.remove();
+          }, 500);
+          
+          resolve();
+        }, 500);
+      }
+    }
+    
+    // Ajouter un timeout pour éviter les blocages
+    setTimeout(() => {
+      if (loadedCount < resourcesToLoad.length) {
+        console.warn(`Certaines ressources n'ont pas pu être chargées (${loadedCount}/${resourcesToLoad.length})`);
+        resourceLoadingScreen.classList.add('fade-out');
+        
+        setTimeout(() => {
+          resourceLoadingScreen.remove();
+        }, 500);
+        
+        resolve();
+      }
+    }, 10000); // 10 secondes max
+  });
+}
+
+// Fonction pour précharger les modules JS nécessaires
+function preloadModules() {
+  return Promise.all([
+    import('./modules/engine.js'),
+    import('./modules/interface.js'),
+    import('./modules/missions.js'),
+    import('./modules/narrative-events.js'),
+    import('./data/actions.js'),
+    import('./data/events.js')
+  ]).catch(error => {
+    console.error("Erreur lors du préchargement des modules:", error);
+    // Continuer malgré l'erreur
+    return [];
+  });
+}
+
+// Créer un élément d'écran de chargement persistant qui sera géré par engine.js
+function createLoadingScreen() {
+  // Vérifier si l'écran existe déjà
+  if (document.getElementById('loading-screen')) {
+    return;
   }
   
-  .advisor-avatar {
-    width: 50px;
-    height: 50px;
-    font-size: 1.2rem;
-  }
+  // Créer l'écran de chargement
+  const loadingScreen = document.createElement('div');
+  loadingScreen.id = 'loading-screen';
+  loadingScreen.className = 'loading-screen';
+  loadingScreen.innerHTML = `
+    <div class="loading-content">
+      <h2>ClimaQuest</h2>
+      <div class="loading-spinner"></div>
+      <p>Initialisation du Conseil Climatique...</p>
+      <div class="loading-progress-bar">
+        <div class="loading-progress-bar-inner" style="width: 0%"></div>
+      </div>
+      <div class="loading-progress-text">0%</div>
+    </div>
+  `;
   
-  .intro-content {
-    padding: 1.5rem;
+  document.body.appendChild(loadingScreen);
+}
+
+// Démarrer l'application
+async function startApp() {
+  try {
+    console.log("Démarrage de l'application...");
+    
+    // Vérifier la compatibilité du navigateur
+    if (!checkBrowserCompatibility()) {
+      return;
+    }
+    
+    // Précharger les modules JS nécessaires
+    await preloadModules();
+    
+    // Créer l'écran de chargement principal (sera géré par engine.js)
+    createLoadingScreen();
+    
+    // Charger les ressources
+    await loadResources();
+    
+    // Initialiser le jeu (engine.js gère son propre écran de chargement)
+    initGame();
+    
+    // Configurer l'interface utilisateur
+    setupUI();
+    
+    console.log("Initialisation complète! Bienvenue dans ClimaQuest");
+    
+    // L'écran de chargement sera masqué par engine.js une fois l'initialisation terminée
+    
+  } catch (error) {
+    console.error("Erreur d'initialisation:", error);
+    
+    // Masquer l'écran de chargement en cas d'erreur
+    const loadingScreen = document.getElementById('loading-screen');
+    if (loadingScreen) {
+      loadingScreen.classList.add('fade-out');
+      
+      setTimeout(() => {
+        loadingScreen.remove();
+      }, 500);
+    }
+    
+    // Afficher un message d'erreur à l'utilisateur
+    alert(`Une erreur est survenue lors du démarrage de l'application: ${error.message}`);
   }
 }
+
+// Afficher le message d'introduction
+function showIntroduction() {
+  return new Promise((resolve) => {
+    const introContainer = document.createElement('div');
+    introContainer.className = 'intro-overlay';
+    
+    introContainer.innerHTML = `
+      <div class="intro-content">
+        <h2>Bienvenue au Conseil Climatique</h2>
+        <p>En tant qu'Architecte de l'Avenir, vous devez guider votre région à travers les défis climatiques du 21ème siècle.</p>
+        <p>Prenez des décisions stratégiques, répondez aux crises environnementales et construisez un avenir durable pour les générations futures.</p>
+        <div class="intro-advisors">
+          <div class="intro-advisor">
+            <div class="advisor-avatar dr-chen">C</div>
+            <div class="advisor-name">Dr. Chen</div>
+            <div class="advisor-title">Scientifique Environnemental</div>
+          </div>
+          <div class="intro-advisor">
+            <div class="advisor-avatar ministre-dubois">D</div>
+            <div class="advisor-name">Ministre Dubois</div>
+            <div class="advisor-title">Ministre de l'Économie</div>
+          </div>
+          <div class="intro-advisor">
+            <div class="advisor-avatar prof-moreau">M</div>
+            <div class="advisor-name">Prof. Moreau</div>
+            <div class="advisor-title">Sociologue</div>
+          </div>
+          <div class="intro-advisor">
+            <div class="advisor-avatar ingenieur-garcia">G</div>
+            <div class="advisor-name">Ingénieur Garcia</div>
+            <div class="advisor-title">Directeur de l'Innovation</div>
+          </div>
+        </div>
+        <p>Vos conseillers vous aideront à prendre les meilleures décisions pour votre région. Êtes-vous prêt à relever le défi ?</p>
+        <button id="start-game" class="btn btn-primary">Commencer votre mandat</button>
+      </div>
+    `;
+    
+    document.body.appendChild(introContainer);
+    
+    // Ajouter un écouteur d'événement pour le bouton de démarrage
+    document.getElementById('start-game').addEventListener('click', () => {
+      introContainer.classList.add('fade-out');
+      
+      setTimeout(() => {
+        introContainer.remove();
+        resolve();
+      }, 500);
+    });
+  });
+}
+
+// Démarrer l'application quand le DOM est chargé
+document.addEventListener('DOMContentLoaded', async () => {
+  // Démarrer l'application
+  await startApp();
+  
+  // Afficher l'introduction seulement après l'initialisation complète
+  // Cela sera géré par la fonction d'initialisation du moteur
+  /*
+  // Écoutons un événement personnalisé indiquant que l'initialisation est terminée
+  document.addEventListener('climaquest-initialized', async () => {
+    // Afficher l'introduction
+    await showIntroduction();
+  });
+  */
+});

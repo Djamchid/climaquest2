@@ -1,3 +1,5 @@
+// missions.js - Complete revised file
+
 // Système de missions pour ClimaQuest
 import { state } from './engine.js';
 import { saveState } from './storage.js';
@@ -62,10 +64,13 @@ export const missions = [
   // D'autres missions seront définies pour les ères ultérieures
 ];
 
+// Clé locale pour le stockage des missions
+const MISSIONS_STORAGE_KEY = 'climaquest_missions';
+
 // Système de gestion des missions
 class MissionSystem {
   constructor() {
-    // Initialisation à partir du localStorage si disponible
+    // Initialisation de l'état par défaut
     this.currentMissions = [];
     this.completedMissions = [];
     this.unlockedMissions = [];
@@ -84,6 +89,9 @@ class MissionSystem {
   
   // Initialiser le système au démarrage du jeu
   initialize() {
+    // Charger l'état sauvegardé si disponible
+    this.loadSystemState();
+    
     // Déterminer l'ère active en fonction de l'année actuelle
     this.updateActiveEra(state.year);
     
@@ -94,6 +102,8 @@ class MissionSystem {
     
     // Mettre à jour l'interface
     this.updateMissionDisplay();
+    
+    return this; // Pour le chaînage
   }
   
   // Mettre à jour l'ère active en fonction de l'année
@@ -156,6 +166,39 @@ class MissionSystem {
         title: `Mission activée : ${mission.title}`,
         message: mission.description,
         type: "mission-activated"
+      });
+      
+      return true;
+    }
+    return false;
+  }
+  
+  // Accepter une mission (alias pour la compatibilité)
+  acceptMission(missionId) {
+    return this.activateMission(missionId);
+  }
+  
+  // Abandonner une mission active
+  abandonMission(missionId) {
+    // Vérifier que la mission est active
+    const index = this.currentMissions.indexOf(missionId);
+    if (index !== -1) {
+      // Retirer de la liste des missions actives
+      this.currentMissions.splice(index, 1);
+      
+      // Remettre dans la liste des missions débloquées
+      this.unlockedMissions.push(missionId);
+      
+      // Sauvegarder et mettre à jour l'affichage
+      this.saveSystemState();
+      this.updateMissionDisplay();
+      
+      // Notifier le joueur
+      const mission = missions.find(m => m.id === missionId);
+      showNotification({
+        title: `Mission abandonnée : ${mission.title}`,
+        message: "La mission a été abandonnée et replacée dans vos missions disponibles.",
+        type: "mission-abandoned"
       });
       
       return true;
@@ -405,6 +448,9 @@ class MissionSystem {
     // Cette fonction sera implémentée dans interface.js
     // Elle mettra à jour l'interface utilisateur pour afficher les missions
     
+    // Définir les missions accessibles pour l'interface
+    this.availableMissions = missions.filter(m => this.unlockedMissions.includes(m.id));
+    
     // Pour l'instant, on se contente de loguer l'état des missions
     console.log("Missions actives:", this.currentMissions);
     console.log("Missions débloquées:", this.unlockedMissions);
@@ -422,23 +468,39 @@ class MissionSystem {
       badges: this.badges
     };
     
-    // Dans une implémentation complète, on sauvegarderait dans localStorage
-    // Par exemple: localStorage.setItem('climaquest_missions', JSON.stringify(this.systemState));
+    // Sauvegarder dans localStorage
+    try {
+      localStorage.setItem(MISSIONS_STORAGE_KEY, JSON.stringify(this.systemState));
+      console.log("État du système de missions sauvegardé");
+    } catch (error) {
+      console.error("Erreur lors de la sauvegarde de l'état des missions:", error);
+    }
   }
   
   // Charger l'état du système de missions
   loadSystemState() {
-    // Dans une implémentation complète, on chargerait depuis localStorage
-    // Par exemple: const savedState = JSON.parse(localStorage.getItem('climaquest_missions'));
-    
-    const savedState = null; // Pour l'instant
-    
-    if (savedState) {
-      this.currentMissions = savedState.currentMissions || [];
-      this.completedMissions = savedState.completedMissions || [];
-      this.unlockedMissions = savedState.unlockedMissions || [];
-      this.activeEra = savedState.activeEra || CLIMATE_ERAS[0].id;
-      this.badges = savedState.badges || [];
+    try {
+      // Charger depuis localStorage
+      const savedState = JSON.parse(localStorage.getItem(MISSIONS_STORAGE_KEY));
+      
+      if (savedState) {
+        this.currentMissions = savedState.currentMissions || [];
+        this.completedMissions = savedState.completedMissions || [];
+        this.unlockedMissions = savedState.unlockedMissions || [];
+        this.activeEra = savedState.activeEra || CLIMATE_ERAS[0].id;
+        this.badges = savedState.badges || [];
+        console.log("État du système de missions chargé");
+      } else {
+        console.log("Aucun état de missions sauvegardé trouvé");
+      }
+    } catch (error) {
+      console.error("Erreur lors du chargement de l'état des missions:", error);
+      // Réinitialiser en cas d'erreur
+      this.currentMissions = [];
+      this.completedMissions = [];
+      this.unlockedMissions = [];
+      this.activeEra = CLIMATE_ERAS[0].id;
+      this.badges = [];
     }
   }
 }

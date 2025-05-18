@@ -15,7 +15,14 @@ window.onerror = function(message, source, lineno, colno, error) {
 function checkBrowserCompatibility() {
   const requiredFeatures = {
     'localStorage': typeof localStorage !== 'undefined',
-    'ES6 Modules': typeof import === 'function',
+    'ES6 Modules': (function() { 
+      try { 
+        new Function('import("")'); 
+        return true; 
+      } catch (e) { 
+        return false; 
+      }
+    })(),
     'Promises': typeof Promise !== 'undefined',
     'Canvas API': typeof document.createElement('canvas').getContext === 'function'
   };
